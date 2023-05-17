@@ -150,7 +150,8 @@ function Get-TargetResource
             Managedidentity       = $ManagedIdentity.IsPresent
             #endregion
         }
-        $assignmentsValues = Get-MgDeviceAppMgtPolicySetAssignment -PolicySetId $Id
+        $assignmentsValues = (Get-MgDeviceAppMgtPolicySet -PolicySetId $Id -ExpandProperty assignments).Assignments
+
         $assignmentResult = @()
         foreach ($assignmentEntry in $AssignmentsValues)
         {
