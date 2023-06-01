@@ -285,7 +285,17 @@ function Set-TargetResource
         }
         #region resource generator code
         $CreateParameters.Add("@odata.type", "#microsoft.graph.PolicySet")
-        $policy = New-MgDeviceAppMgtPolicySet -BodyParameter $CreateParameters
+       #######
+        $myjsonstring = constructGraphBody -displayname $DisplayName -description $Description -Assignmentsarray $Assignments -itemsarray 'boilerplate'
+        write-host $myjsonstring
+        $Url = "https://graph.microsoft.com/beta/deviceAppManagement/policySets"
+        $response = Invoke-MgGraphRequest -Method POST `
+        -Uri $Url -Body $myjsonstring
+
+        write-host $response
+        write-host $response.value
+        #$policy = New-MgDeviceAppMgtPolicySet -BodyParameter $CreateParameters
+        ########
         $assignmentsHash = @()
         foreach ($assignment in $Assignments)
         {
@@ -1367,5 +1377,91 @@ function Convert-M365DSCDRGComplexTypeToHashtable
     }
     return [hashtable]$results
 }
+###########
+# so let's try to construct some body code...
 
+function ConstructItemsJSON
+{
+    param (
+        $Items
+    )
+# boilerplate values, curently the generated config doesn't know what items are
+$itemsstring = @"
+    "items":[
+              {
+                "@odata.type":"#microsoft.graph.managedAppProtectionPolicySetItem",
+                "payloadId":"T_b5a58588-5ac6-4fdf-9b82-5b76a48dcd6e",
+                "guidedDeploymentTags":[]
+              },
+              {
+                "@odata.type":"#microsoft.graph.deviceConfigurationPolicySetItem",
+                "payloadId":"213ae5c7-7d97-41fd-a1ce-8dcf48e104f2",
+                "guidedDeploymentTags":[]
+              },
+              {
+                "@odata.type":"#microsoft.graph.deviceCompliancePolicyPolicySetItem",
+                "payloadId":"72e2862c-d38b-4491-bb75-292d5d7944b5",
+                "guidedDeploymentTags":[]
+              }
+            ],
+"@
+return $itemsstring
+}
+
+function ConstructAssignmentJSON
+{
+    param (
+        $Assignments
+    )
+
+    $assignmentsstring = @"
+    "assignments":[
+"@
+    $firstitem = $true
+    foreach ($assignment in $assignments)
+    {
+                        if ($firstitem) { $firstitem = $false}
+                        else { $assignmentsstring += '},' }
+                        $assignmentsstring += '{'
+                        $assignmentsstring += '"target":{'
+                        $assignmentsstring += ('"@odata.type":"' + $assignment.dataType + '",')
+                        $assignmentsstring += ('"groupId":"' + $assignment.groupId + '"')
+                        $assignmentsstring += '}'
+    }
+    $assignmentsstring += '}'
+    $assignmentsstring += '],'
+
+    return $assignmentsstring
+
+}
+
+# keep it simple first - just assignments
+function constructGraphBody
+{
+    param (
+        [string]$displayname,
+        [string]$description,
+        $Assignmentsarray,
+        $itemsarray
+    )
+
+    $graphbodystring = @"
+    {
+        "displayName":"$($displayname)",
+        "description":"$($description)",
+"@
+    $graphbodystring += ConstructAssignmentJSON -assignments $Assignmentsarray
+    # get items next
+    $graphbodystring += ConstructItemsJSON -items $itemsarray
+    # we'll worry about these values later
+    $graphbodystring += @"
+        "guidedDeploymentTags":[],
+        "roleScopeTags":["0"]
+    }
+"@
+
+    return $graphbodystring
+
+}
+######
 Export-ModuleMember -Function *-TargetResource
