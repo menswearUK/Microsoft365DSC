@@ -88,8 +88,7 @@ function Get-TargetResource
     )
     Write-Verbose -Message "Checking for the Intune Device Enrollment Restriction {$DisplayName}"
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
-        -InboundParameters $PSBoundParameters -ProfileName beta
-    Select-MgProfile -Name beta
+        -InboundParameters $PSBoundParameters
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -108,21 +107,7 @@ function Get-TargetResource
 
     try
     {
-        $config = Get-MgDeviceManagementDeviceEnrollmentConfiguration -DeviceEnrollmentConfigurationId $Identity -ErrorAction silentlyContinue
-
-        <#
-        Not using the DisplayName as a key due to android profiles
-        Android profile are generated using 2 singlePlatformRestriction policies: 1 for android and 1 for androidForWork
-        Both policies have the same name
-
-        if ($null -eq $config)
-        {
-            Write-Verbose -Message "No Device Enrollment Platform Restriction {$Identity} was found"
-
-            $config = Get-MgDeviceManagementDeviceEnrollmentConfiguration -Filter "displayName eq '$DisplayName'" -ErrorAction silentlyContinue| Where-Object -FilterScript { `
-                    $_.AdditionalProperties.'@odata.type' -like '#microsoft.graph.deviceEnrollmentPlatform*Configuration' }
-        }
-        #>
+        $config = Get-MgBetaDeviceManagementDeviceEnrollmentConfiguration -DeviceEnrollmentConfigurationId $Identity -ErrorAction silentlyContinue
 
         if ($null -eq $config)
         {
@@ -152,7 +137,7 @@ function Get-TargetResource
             $results.Remove('WindowsMobileRestriction') | Out-Null
         }
 
-        $AssignmentsValues = Get-MgDeviceManagementDeviceEnrollmentConfigurationAssignment -DeviceEnrollmentConfigurationId $config.Id
+        $AssignmentsValues = Get-MgBetaDeviceManagementDeviceEnrollmentConfigurationAssignment -DeviceEnrollmentConfigurationId $config.Id
         $assignmentResult = @()
         foreach ($assignmentEntry in $AssignmentsValues)
         {
@@ -337,7 +322,7 @@ function Set-TargetResource
 
         Write-Verbose ($PSBoundParameters | ConvertTo-Json -Depth 20)
 
-        $policy = New-MgDeviceManagementDeviceEnrollmentConfiguration `
+        $policy = New-MgBetaDeviceManagementDeviceEnrollmentConfiguration `
             -BodyParameter $PSBoundParameters
 
         #Assignments from DefaultPolicy are not editable and will raise an alert
@@ -347,9 +332,10 @@ function Set-TargetResource
             {
                 $assignmentsHash = Convert-M365DSCDRGComplexTypeToHashtable -ComplexObject $Assignments
 
-                Update-DeviceConfigurationPolicyAssignments `
-                    -DeviceConfigurationPolicyId $policy.Id `
-                    -Targets $assignmentsHash
+                Update-DeviceConfigurationPolicyAssignment `
+                    -DeviceConfigurationPolicyId  $policy.id `
+                    -Targets $assignmentsHash `
+                    -Repository 'deviceManagement/deviceEnrollmentConfigurations'
             }
         }
     }
@@ -393,7 +379,7 @@ function Set-TargetResource
         }
         $PSBoundParameters.add('@odata.type', $policyType)
         Write-Verbose ($PSBoundParameters | ConvertTo-Json -Depth 20)
-        Update-MgDeviceManagementDeviceEnrollmentConfiguration `
+        Update-MgBetaDeviceManagementDeviceEnrollmentConfiguration `
             -BodyParameter $PSBoundParameters `
             -DeviceEnrollmentConfigurationId $Identity
 
@@ -404,19 +390,20 @@ function Set-TargetResource
             {
                 $assignmentsHash = Convert-M365DSCDRGComplexTypeToHashtable -ComplexObject $Assignments
 
-                Update-DeviceConfigurationPolicyAssignments `
-                    -DeviceConfigurationPolicyId $Identity `
-                    -Targets $assignmentsHash
+                Update-DeviceConfigurationPolicyAssignment `
+                -DeviceConfigurationPolicyId  $Identity `
+                -Targets $assignmentsHash `
+                -Repository 'deviceManagement/deviceEnrollmentConfigurations'
             }
         }
     }
     elseif ($Ensure -eq 'Absent' -and $currentCategory.Ensure -eq 'Present')
     {
         Write-Verbose -Message "Removing Device Enrollment Platform Restriction {$DisplayName}"
-        $config = Get-MgDeviceManagementDeviceEnrollmentConfiguration -Filter "displayName eq '$DisplayName'" `
+        $config = Get-MgBetaDeviceManagementDeviceEnrollmentConfiguration -Filter "displayName eq '$DisplayName'" `
         | Where-Object -FilterScript { $_.AdditionalProperties.'@odata.type' -eq '#microsoft.graph.deviceEnrollmentPlatformRestrictionsConfiguration' }
 
-        Remove-MgDeviceManagementDeviceEnrollmentConfiguration -DeviceEnrollmentConfigurationId $config.id
+        Remove-MgBetaDeviceManagementDeviceEnrollmentConfiguration -DeviceEnrollmentConfigurationId $config.id
     }
 }
 
@@ -536,7 +523,7 @@ function Test-TargetResource
     {
         $source = $PSBoundParameters.$key
         $target = $CurrentValues.$key
-        if ($source.getType().Name -like '*CimInstance*')
+        if ($source.getType().Name -like '*CimInstance*' -and $key -ne 'WindowsMobileRestriction')
         {
             $source = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $source
 
@@ -551,7 +538,6 @@ function Test-TargetResource
             }
 
             $ValuesToCheck.Remove($key) | Out-Null
-
         }
     }
 
@@ -560,9 +546,7 @@ function Test-TargetResource
     $ValuesToCheck.Remove('TenantId') | Out-Null
     $ValuesToCheck.Remove('ApplicationSecret') | Out-Null
     $ValuesToCheck.Remove('Id') | Out-Null
-
-    #Write-Verbose -Message "Current Values: $(Convert-M365DscHashtableToString -Hashtable $CurrentValues)"
-    #Write-Verbose -Message "Target Values: $(Convert-M365DscHashtableToString -Hashtable $ValuesToCheck)"
+    $ValuesToCheck.Remove('WindowsMobileRestriction') | Out-Null
 
     #Convert any DateTime to String
     foreach ($key in $ValuesToCheck.Keys)
@@ -574,9 +558,12 @@ function Test-TargetResource
         }
     }
 
+    Write-Verbose -Message "Current Values: $(Convert-M365DscHashtableToString -Hashtable $CurrentValues)"
+    Write-Verbose -Message "Target Values: $(Convert-M365DscHashtableToString -Hashtable $PSBoundParameters)"
     #Compare basic parameters
     if ($testResult)
     {
+        Write-Verbose -Message "Comparing the current values with the desired ones"
         $testResult = Test-M365DSCParameterState -CurrentValues $CurrentValues `
             -Source $($MyInvocation.MyCommand.Source) `
             -DesiredValues $PSBoundParameters `
@@ -623,8 +610,7 @@ function Export-TargetResource
         $ManagedIdentity
     )
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
-        -InboundParameters $PSBoundParameters -ProfileName beta
-    Select-MgProfile -Name beta
+        -InboundParameters $PSBoundParameters
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -640,7 +626,7 @@ function Export-TargetResource
 
     try
     {
-        [array]$configs = Get-MgDeviceManagementDeviceEnrollmentConfiguration -All:$true -Filter $Filter -ErrorAction Stop `
+        [array]$configs = Get-MgBetaDeviceManagementDeviceEnrollmentConfiguration -All:$true -Filter $Filter -ErrorAction Stop `
         | Where-Object -FilterScript { $_.AdditionalProperties.'@odata.type' -like '#microsoft.graph.deviceEnrollmentPlatform*Configuration' }
 
         $i = 1
@@ -959,569 +945,10 @@ function Get-DevicePlatformRestrictionSetting
                 }
             }
             $results.add($keyName, $hash)
-
-            #$results.add($keyName,[Hashtable]::new($platformRestrictions.$key))
         }
     }
 
     return $results
-}
-
-function Update-DeviceConfigurationPolicyAssignments
-{
-    [CmdletBinding()]
-    [OutputType([System.Collections.Hashtable])]
-    param (
-        [Parameter(Mandatory = 'true')]
-        [System.String]
-        $DeviceConfigurationPolicyId,
-
-        [Parameter()]
-        [Array]
-        $Targets
-    )
-    try
-    {
-        $configurationPolicyAssignments = @()
-
-        $Uri = "https://graph.microsoft.com/beta/deviceManagement/deviceEnrollmentConfigurations/$DeviceConfigurationPolicyId/assign"
-
-        foreach ($target in $targets)
-        {
-            $formattedTarget = @{'@odata.type' = $target.dataType }
-            if ($target.groupId)
-            {
-                $formattedTarget.Add('groupId', $target.groupId)
-            }
-            if ($target.collectionId)
-            {
-                $formattedTarget.Add('collectionId', $target.collectionId)
-            }
-            if ($target.deviceAndAppManagementAssignmentFilterType)
-            {
-                $formattedTarget.Add('deviceAndAppManagementAssignmentFilterType', $target.deviceAndAppManagementAssignmentFilterType)
-            }
-            if ($target.deviceAndAppManagementAssignmentFilterId)
-            {
-                $formattedTarget.Add('deviceAndAppManagementAssignmentFilterId', $target.deviceAndAppManagementAssignmentFilterId)
-            }
-            $configurationPolicyAssignments += @{'target' = $formattedTarget }
-        }
-        $body = @{'enrollmentConfigurationAssignments' = $configurationPolicyAssignments } | ConvertTo-Json -Depth 20
-        #write-verbose -Message $body
-        Invoke-MgGraphRequest -Method POST -Uri $Uri -Body $body -ErrorAction Stop
-    }
-    catch
-    {
-        try
-        {
-            Write-Verbose -Message $_
-            $tenantIdValue = ''
-            $tenantIdValue = $Credential.UserName.Split('@')[1]
-            Add-M365DSCEvent -Message $_ -EntryType 'Error' `
-                -EventID 1 -Source $($MyInvocation.MyCommand.Source) `
-                -TenantId $tenantIdValue
-        }
-        catch
-        {
-            Write-Verbose -Message $_
-        }
-        return $null
-    }
-
-
-}
-
-function Get-M365DSCDRGComplexTypeToHashtable
-{
-    [CmdletBinding()]
-    [OutputType([hashtable], [hashtable[]])]
-    param(
-        [Parameter()]
-        $ComplexObject
-    )
-
-    if ($null -eq $ComplexObject)
-    {
-        return $null
-    }
-
-
-    if ($ComplexObject.getType().Fullname -like '*hashtable')
-    {
-        return $ComplexObject
-    }
-    if ($ComplexObject.getType().Fullname -like '*hashtable[[\]]')
-    {
-        return , [hashtable[]]$ComplexObject
-    }
-
-
-    if ($ComplexObject.gettype().fullname -like '*[[\]]')
-    {
-        $results = @()
-
-        foreach ($item in $ComplexObject)
-        {
-            if ($item)
-            {
-                $hash = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $item
-                $results += $hash
-            }
-        }
-
-        # PowerShell returns all non-captured stream output, not just the argument of the return statement.
-        #An empty array is mangled into $null in the process.
-        #However, an array can be preserved on return by prepending it with the array construction operator (,)
-        return , [hashtable[]]$results
-    }
-
-    $results = @{}
-    $keys = $ComplexObject | Get-Member | Where-Object -FilterScript { $_.MemberType -eq 'Property' -and $_.Name -ne 'AdditionalProperties' }
-
-    foreach ($key in $keys)
-    {
-
-        if ($null -ne $ComplexObject.$($key.Name))
-        {
-            $keyName = $key.Name[0].ToString().ToLower() + $key.Name.Substring(1, $key.Name.Length - 1)
-
-            if ($ComplexObject.$($key.Name).gettype().fullname -like '*CimInstance*')
-            {
-                $hash = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $ComplexObject.$($key.Name)
-
-                $results.Add($keyName, $hash)
-            }
-            else
-            {
-                $results.Add($keyName, $ComplexObject.$($key.Name))
-            }
-        }
-    }
-
-    return [hashtable]$results
-}
-
-function Get-M365DSCDRGComplexTypeToString
-{
-    [CmdletBinding()]
-    #[OutputType([System.String])]
-    param(
-        [Parameter()]
-        $ComplexObject,
-
-        [Parameter(Mandatory = $true)]
-        [System.String]
-        $CIMInstanceName,
-
-        [Parameter()]
-        [Array]
-        $ComplexTypeMapping,
-
-        [Parameter()]
-        [System.String]
-        $Whitespace = '',
-
-        [Parameter()]
-        [switch]
-        $isArray = $false
-    )
-
-    if ($null -eq $ComplexObject)
-    {
-        return $null
-    }
-
-    #If ComplexObject  is an Array
-    if ($ComplexObject.GetType().FullName -like '*[[\]]')
-    {
-        $currentProperty = @()
-        foreach ($item in $ComplexObject)
-        {
-            $split = @{
-                'ComplexObject'   = $item
-                'CIMInstanceName' = $CIMInstanceName
-                'Whitespace'      = "                $whitespace"
-            }
-            if ($ComplexTypeMapping)
-            {
-                $split.add('ComplexTypeMapping', $ComplexTypeMapping)
-            }
-
-            $currentProperty += Get-M365DSCDRGComplexTypeToString -isArray:$true @split
-
-        }
-
-        # PowerShell returns all non-captured stream output, not just the argument of the return statement.
-        #An empty array is mangled into $null in the process.
-        #However, an array can be preserved on return by prepending it with the array construction operator (,)
-        return , $currentProperty
-    }
-
-    $currentProperty = ''
-    if ($isArray)
-    {
-        $currentProperty += "`r`n"
-    }
-    $currentProperty += "$whitespace`MSFT_$CIMInstanceName{`r`n"
-    $keyNotNull = 0
-    foreach ($key in $ComplexObject.Keys)
-    {
-        if ($null -ne $ComplexObject.$key)
-        {
-            $keyNotNull++
-            if ($ComplexObject.$key.GetType().FullName -like 'Microsoft.Graph.PowerShell.Models.*' -or $key -in $ComplexTypeMapping.Name)
-            {
-                $hashPropertyType = $ComplexObject[$key].GetType().Name.tolower()
-
-                #overwrite type if object defined in mapping complextypemapping
-                if ($key -in $ComplexTypeMapping.Name)
-                {
-                    $hashPropertyType = ($ComplexTypeMapping | Where-Object -FilterScript { $_.Name -eq $key }).CimInstanceName
-                    $hashProperty = $ComplexObject[$key]
-                }
-                else
-                {
-                    $hashProperty = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $ComplexObject[$key]
-                }
-
-                if ($key -notin $ComplexTypeMapping.Name)
-                {
-                    $Whitespace += '            '
-                }
-
-                if (-not $isArray -or ($isArray -and $key -in $ComplexTypeMapping.Name ))
-                {
-                    $currentProperty += $whitespace + $key + ' = '
-                    if ($ComplexObject[$key].GetType().FullName -like '*[[\]]')
-                    {
-                        $currentProperty += '@('
-                    }
-                }
-
-                if ($key -in $ComplexTypeMapping.Name)
-                {
-                    $Whitespace = ''
-
-                }
-                $currentProperty += Get-M365DSCDRGComplexTypeToString `
-                    -ComplexObject $hashProperty `
-                    -CIMInstanceName $hashPropertyType `
-                    -Whitespace $Whitespace `
-                    -ComplexTypeMapping $ComplexTypeMapping
-
-                if ($ComplexObject.$key.GetType().FullName -like '*[[\]]')
-                {
-                    $currentProperty += ')'
-                }
-            }
-            else
-            {
-                if (-not $isArray)
-                {
-                    $Whitespace = '            '
-                }
-                $currentProperty += Get-M365DSCDRGSimpleObjectTypeToString -Key $key -Value $ComplexObject[$key] -Space ($Whitespace + '    ')
-            }
-        }
-        else
-        {
-            $mappedKey = $ComplexTypeMapping | Where-Object -FilterScript { $_.name -eq $key }
-
-            if ($mappedKey -and $mappedKey.isRequired)
-            {
-                if ($mappedKey.isArray)
-                {
-                    $currentProperty += "$Whitespace    $key = @()`r`n"
-                }
-                else
-                {
-                    $currentProperty += "$Whitespace    $key = `$null`r`n"
-                }
-            }
-        }
-    }
-    $currentProperty += "$Whitespace}"
-
-    return $currentProperty
-}
-
-Function Get-M365DSCDRGSimpleObjectTypeToString
-{
-    [CmdletBinding()]
-    [OutputType([System.String])]
-    param(
-        [Parameter(Mandatory = 'true')]
-        [System.String]
-        $Key,
-
-        [Parameter(Mandatory = 'true')]
-        $Value,
-
-        [Parameter()]
-        [System.String]
-        $Space = '                '
-
-    )
-
-    $returnValue = ''
-    switch -Wildcard ($Value.GetType().Fullname )
-    {
-        '*.Boolean'
-        {
-            $returnValue = $Space + $Key + " = `$" + $Value.ToString() + "`r`n"
-        }
-        '*.String'
-        {
-            if ($key -eq '@odata.type')
-            {
-                $key = 'odataType'
-            }
-            $returnValue = $Space + $Key + " = '" + $Value + "'`r`n"
-        }
-        '*.DateTime'
-        {
-            $returnValue = $Space + $Key + " = '" + $Value + "'`r`n"
-        }
-        '*[[\]]'
-        {
-            $returnValue = $Space + $key + ' = @('
-            $whitespace = ''
-            $newline = ''
-            if ($Value.count -gt 1)
-            {
-                $returnValue += "`r`n"
-                $whitespace = $Space + '    '
-                $newline = "`r`n"
-            }
-            foreach ($item in $Value)
-            {
-                switch -Wildcard ($item.GetType().Fullname )
-                {
-                    '*.String'
-                    {
-                        $returnValue += "$whitespace'$item'$newline"
-                    }
-                    '*.DateTime'
-                    {
-                        $returnValue += "$whitespace'$item'$newline"
-                    }
-                    Default
-                    {
-                        $returnValue += "$whitespace$item$newline"
-                    }
-                }
-            }
-            if ($Value.count -gt 1)
-            {
-                $returnValue += "$Space)`r`n"
-            }
-            else
-            {
-                $returnValue += ")`r`n"
-
-            }
-        }
-        Default
-        {
-            $returnValue = $Space + $Key + ' = ' + $Value + "`r`n"
-        }
-    }
-    return $returnValue
-}
-
-function Compare-M365DSCComplexObject
-{
-    [CmdletBinding()]
-    [OutputType([System.Boolean])]
-    param(
-        [Parameter()]
-        $Source,
-        [Parameter()]
-        $Target
-    )
-
-    #Comparing full objects
-    if ($null -eq $Source -and $null -eq $Target)
-    {
-        return $true
-    }
-
-    $sourceValue = ''
-    $targetValue = ''
-    if (($null -eq $Source) -xor ($null -eq $Target))
-    {
-        if ($null -eq $Source)
-        {
-            $sourceValue = 'Source is null'
-        }
-
-        if ($null -eq $Target)
-        {
-            $targetValue = 'Target is null'
-        }
-        Write-Verbose -Message "Configuration drift - Complex object: {$sourceValue$targetValue}"
-        return $false
-    }
-
-    if ($Source.getType().FullName -like '*CimInstance[[\]]' -or $Source.getType().FullName -like '*Hashtable[[\]]')
-    {
-        if ($source.count -ne $target.count)
-        {
-            Write-Verbose -Message "Configuration drift - The complex array have different number of items: Source {$($source.count)} Target {$($target.count)}"
-            return $false
-        }
-        if ($source.count -eq 0)
-        {
-            return $true
-        }
-
-        $i = 0
-        foreach ($item in $Source)
-        {
-
-            $compareResult = Compare-M365DSCComplexObject `
-                -Source (Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $Source[$i]) `
-                -Target $Target[$i]
-
-            if (-not $compareResult)
-            {
-                Write-Verbose -Message 'Configuration drift - The complex array items are not identical'
-                return $false
-            }
-            $i++
-        }
-        return $true
-    }
-
-    $keys = $Source.Keys | Where-Object -FilterScript { $_ -ne 'PSComputerName' }
-    foreach ($key in $keys)
-    {
-        #write-verbose -message "Comparing key: {$key}"
-        #Matching possible key names between Source and Target
-        $skey = $key
-        $tkey = $key
-        if ($key -eq 'odataType')
-        {
-            $skey = '@odata.type'
-        }
-        else
-        {
-            $tmpkey = $Target.keys | Where-Object -FilterScript { $_ -eq "$key" }
-            if ($tkey)
-            {
-                $tkey = $tmpkey | Select-Object -First 1
-            }
-        }
-
-        $sourceValue = $Source.$key
-        $targetValue = $Target.$tkey
-        #One of the item is null and not the other
-        if (($null -eq $Source.$skey) -xor ($null -eq $Target.$tkey))
-        {
-
-            if ($null -eq $Source.$skey)
-            {
-                $sourceValue = 'null'
-            }
-
-            if ($null -eq $Target.$tkey)
-            {
-                $targetValue = 'null'
-            }
-
-            Write-Verbose -Message "Configuration drift - key: $key Source {$sourceValue} Target {$targetValue}"
-            return $false
-        }
-
-        #Both keys aren't null or empty
-        if (($null -ne $Source.$skey) -and ($null -ne $Target.$tkey))
-        {
-            if ($Source.$skey.getType().FullName -like '*CimInstance*' -or $Source.$skey.getType().FullName -like '*hashtable*'  )
-            {
-                #Recursive call for complex object
-                $compareResult = Compare-M365DSCComplexObject `
-                    -Source (Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $Source.$skey) `
-                    -Target $Target.$tkey
-
-                if (-not $compareResult)
-                {
-
-                    Write-Verbose -Message "Configuration drift - complex object key: $key Source {$sourceValue} Target {$targetValue}"
-                    return $false
-                }
-            }
-            else
-            {
-                #Simple object comparison
-                $referenceObject = $Target.$tkey
-                $differenceObject = $Source.$skey
-
-                $compareResult = Compare-Object `
-                    -ReferenceObject ($referenceObject) `
-                    -DifferenceObject ($differenceObject)
-
-                if ($null -ne $compareResult)
-                {
-                    Write-Verbose -Message "Configuration drift - simple object key: $key Source {$sourceValue} Target {$targetValue}"
-                    return $false
-                }
-
-            }
-
-        }
-    }
-
-    return $true
-}
-function Convert-M365DSCDRGComplexTypeToHashtable
-{
-    [CmdletBinding()]
-    [OutputType([hashtable], [hashtable[]])]
-    param(
-        [Parameter(Mandatory = 'true')]
-        $ComplexObject
-    )
-
-
-    if ($ComplexObject.getType().Fullname -like '*[[\]]')
-    {
-        $results = @()
-        foreach ($item in $ComplexObject)
-        {
-            $hash = Convert-M365DSCDRGComplexTypeToHashtable -ComplexObject $item
-            $results += $hash
-        }
-
-        #Write-Verbose -Message ("Convert-M365DSCDRGComplexTypeToHashtable >>> results: "+(convertTo-JSON $results -Depth 20))
-        # PowerShell returns all non-captured stream output, not just the argument of the return statement.
-        #An empty array is mangled into $null in the process.
-        #However, an array can be preserved on return by prepending it with the array construction operator (,)
-        return , [hashtable[]]$results
-    }
-    $hashComplexObject = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $ComplexObject
-
-    if ($null -ne $hashComplexObject)
-    {
-
-        $results = $hashComplexObject.clone()
-        $keys = $hashComplexObject.Keys | Where-Object -FilterScript { $_ -ne 'PSComputerName' }
-        foreach ($key in $keys)
-        {
-            if ($hashComplexObject[$key] -and $hashComplexObject[$key].getType().Fullname -like '*CimInstance*')
-            {
-                $results[$key] = Convert-M365DSCDRGComplexTypeToHashtable -ComplexObject $hashComplexObject[$key]
-            }
-            else
-            {
-                $propertyName = $key[0].ToString().ToLower() + $key.Substring(1, $key.Length - 1)
-                $propertyValue = $results[$key]
-                $results.remove($key) | Out-Null
-                $results.add($propertyName, $propertyValue)
-            }
-        }
-    }
-    return [hashtable]$results
 }
 
 Export-ModuleMember -Function *-TargetResource

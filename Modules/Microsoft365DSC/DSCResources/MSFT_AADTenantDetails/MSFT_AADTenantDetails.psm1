@@ -50,7 +50,8 @@ function Get-TargetResource
     )
 
     Write-Verbose -Message 'Getting configuration of AzureAD Tenant Details'
-    $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' -InboundParameters $PSBoundParameters
+    $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
+        -InboundParameters $PSBoundParameters
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -70,7 +71,7 @@ function Get-TargetResource
 
     try
     {
-        $AADTenantDetails = Get-MgOrganization -ErrorAction 'SilentlyContinue'
+        $AADTenantDetails = Get-MgBetaOrganization -ErrorAction 'SilentlyContinue'
 
         if ($null -eq $AADTenantDetails)
         {
@@ -159,6 +160,8 @@ function Set-TargetResource
     )
 
     Write-Verbose -Message 'Setting configuration of AzureAD Tenant Details'
+    $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
+        -InboundParameters $PSBoundParameters
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -200,10 +203,10 @@ function Set-TargetResource
     {
         $currentParameters.Remove('ManagedIdentity') | Out-Null
     }
-    $currentParameters.Add('OrganizationId', $(Get-MgOrganization).Id)
+    $currentParameters.Add('OrganizationId', $(Get-MgBetaOrganization).Id)
     try
     {
-        Update-MgOrganization @currentParameters
+        Update-MgBetaOrganization @currentParameters
     }
     catch
     {
@@ -325,7 +328,8 @@ function Export-TargetResource
         [Switch]
         $ManagedIdentity
     )
-    $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' -InboundParameters $PSBoundParameters
+    $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
+        -InboundParameters $PSBoundParameters
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -342,7 +346,7 @@ function Export-TargetResource
     $dscContent = ''
     try
     {
-        $AADTenantDetails = Get-MgOrganization -ErrorAction Stop
+        $AADTenantDetails = Get-MgBetaOrganization -ErrorAction Stop
 
         $Params = @{
             MarketingNotificationEmails          = $AADTenantDetails.MarketingNotificationEmails

@@ -32,19 +32,20 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                 return 'Credentials'
             }
 
-            Mock -CommandName Update-MgDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
+            Mock -CommandName Update-MgBetaDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
             }
 
-            Mock -CommandName New-MgDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
+            Mock -CommandName New-MgBetaDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
             }
 
-            Mock -CommandName Remove-MgDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
+            Mock -CommandName Remove-MgBetaDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
             }
 
-            Mock -CommandName Get-MgDeviceAppManagementTargetedManagedAppConfigurationAssignment -MockWith {
+            Mock -CommandName Get-MgBetaDeviceAppManagementTargetedManagedAppConfigurationAssignment -MockWith {
                 return @()
             }
-
+            Mock -CommandName Update-DeviceConfigurationPolicyAssignment -MockWith {
+            }
             # Mock Write-Host to hide output during the tests
             Mock -CommandName Write-Host -MockWith {
             }
@@ -60,7 +61,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential  = $Credential
                 }
 
-                Mock -CommandName Get-MgDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
+                Mock -CommandName Get-MgBetaDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
                     return $null
                 }
             }
@@ -75,7 +76,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
             It 'Should create the App Configuration Policy from the Set method' {
                 Set-TargetResource @testParams
-                Should -Invoke -CommandName 'New-MgDeviceAppManagementTargetedManagedAppConfiguration' -Exactly 1
+                Should -Invoke -CommandName 'New-MgBetaDeviceAppManagementTargetedManagedAppConfiguration' -Exactly 1
             }
         }
 
@@ -88,7 +89,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential  = $Credential
                 }
 
-                Mock -CommandName Get-MgDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
+                Mock -CommandName Get-MgBetaDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
                     return @{
                         DisplayName = 'Test App Configuration Policy'
                         Description = 'Different Value'
@@ -107,7 +108,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
             It 'Should update the App Configuration Policy from the Set method' {
                 Set-TargetResource @testParams
-                Should -Invoke -CommandName Update-MgDeviceAppManagementTargetedManagedAppConfiguration -Exactly 1
+                Should -Invoke -CommandName Update-MgBetaDeviceAppManagementTargetedManagedAppConfiguration -Exactly 1
             }
         }
 
@@ -120,14 +121,14 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential  = $Credential
                 }
 
-                Mock -CommandName Get-MgDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
+                Mock -CommandName Get-MgBetaDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
                     return @{
                         DisplayName = 'Test App Configuration Policy Desire State'
                         Description = 'Test Definition'
                         Id          = 'A_19dbaff5-9aff-48b0-a60d-d0471ddaf141'
                     }
                 }
-                Mock -CommandName Get-MgDeviceAppManagementTargetedManagedAppConfigurationAssignment -MockWith {
+                Mock -CommandName Get-MgBetaDeviceAppManagementTargetedManagedAppConfigurationAssignment -MockWith {
                     return @()
                 }
 
@@ -147,7 +148,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential  = $Credential
                 }
 
-                Mock -CommandName Get-MgDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
+                Mock -CommandName Get-MgBetaDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
                     return @{
                         DisplayName = 'Test App Configuration Policy'
                         Description = 'Test Definition'
@@ -166,7 +167,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
             It 'Should remove the App Configuration Policy from the Set method' {
                 Set-TargetResource @testParams
-                Should -Invoke -CommandName Remove-MgDeviceAppManagementTargetedManagedAppConfiguration -Exactly 1
+                Should -Invoke -CommandName Remove-MgBetaDeviceAppManagementTargetedManagedAppConfiguration -Exactly 1
             }
         }
 
@@ -178,7 +179,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential = $Credential
                 }
 
-                Mock -CommandName Get-MgDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
+                Mock -CommandName Get-MgBetaDeviceAppManagementTargetedManagedAppConfiguration -MockWith {
                     return @{
                         DisplayName = 'Test App Configuration Policy'
                         Description = 'Test Definition'

@@ -191,7 +191,7 @@ function New-MGServicePrincipal
     )
 }
 
-function New-MgRoleManagementDirectoryRoleDefinition
+function New-MgBetaRoleManagementDirectoryRoleDefinition
 {
     [CmdletBinding()]
     param(
@@ -229,7 +229,7 @@ function New-MgRoleManagementDirectoryRoleDefinition
     )
 }
 
-function Update-MgRoleManagementDirectoryRoleDefinition
+function Update-MgBetaRoleManagementDirectoryRoleDefinition
 {
     [CmdletBinding()]
     param(
@@ -271,7 +271,7 @@ function Update-MgRoleManagementDirectoryRoleDefinition
     )
 }
 
-function Remove-MgRoleManagementDirectoryRoleDefinition
+function Remove-MgBetaRoleManagementDirectoryRoleDefinition
 {
     [CmdletBinding()]
     param(
@@ -358,7 +358,7 @@ function New-M365DSCConnection
         [Parameter(Mandatory = $true)]
         [ValidateSet('ExchangeOnline', 'Intune', `
                 'SecurityComplianceCenter', 'MSOnline', 'PnP', 'PowerPlatforms', `
-                'MicrosoftTeams', 'MicrosoftGraph')]
+                'MicrosoftTeams', 'MicrosoftGraph', 'Tasks')]
         [System.String]
         $Workload,
 
@@ -372,12 +372,7 @@ function New-M365DSCConnection
 
         [Parameter()]
         [System.Boolean]
-        $SkipModuleReload,
-
-        [Parameter()]
-        [System.String]
-        [ValidateSet('v1.0', 'beta')]
-        $ProfileName = 'v1.0'
+        $SkipModuleReload
     )
 }
 

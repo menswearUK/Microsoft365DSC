@@ -271,7 +271,14 @@ function Get-TargetResource
 
     try
     {
-        [Array]$group = Get-UnifiedGroup -Identity $DisplayName -IncludeAllProperties -ErrorAction Stop
+        if ($null -ne $Script:exportedInstances -and $Script:ExportMode)
+        {
+            [Array]$group = $Script:exportedInstances | Where-Object -FilterScript {$_.DisplayName -eq $DisplayName}
+        }
+        else
+        {
+            [Array]$group = Get-UnifiedGroup -Identity $DisplayName -IncludeAllProperties -ErrorAction Stop
+        }
         if ($group.Length -gt 1)
         {
             Write-Warning -Message "Multiple instances of a group named {$DisplayName} was discovered which could result in inconsistencies retrieving its values."
@@ -948,60 +955,75 @@ function Export-TargetResource
     Add-M365DSCTelemetryEvent -Data $data
     #endregion
 
-    [array]$groups = Get-UnifiedGroup
+    try
+    {
+        $Script:ExportMode = $true
+        [array] $Script:exportedInstances = Get-UnifiedGroup -ErrorAction SilentlyContinue
 
-    $i = 1
-    if ($groups.Length -eq 0)
-    {
-        Write-Host $Global:M365DSCEmojiGreenCheckMark
-    }
-    else
-    {
-        Write-Host "`r`n"-NoNewline
-    }
-    $dscContent = ''
-    foreach ($group in $groups)
-    {
-        Write-Host "    |---[$i/$($groups.Length)] $($group.DisplayName)" -NoNewline
-        $groupName = $group.DisplayName
-        if (-not [System.String]::IsNullOrEmpty($groupName))
+        $i = 1
+        if ($Script:exportedInstances.Length -eq 0)
         {
-            $Params = @{
-                Credential            = $Credential
-                DisplayName           = $groupName
-                ApplicationId         = $ApplicationId
-                TenantId              = $TenantId
-                CertificateThumbprint = $CertificateThumbprint
-                CertificatePassword   = $CertificatePassword
-                Managedidentity       = $ManagedIdentity.IsPresent
-                CertificatePath       = $CertificatePath
-            }
-            $Results = Get-TargetResource @Params
-
-            if ($Results -is [System.Collections.Hashtable] -and $Results.Count -gt 1)
-            {
-                $Results = Update-M365DSCExportAuthenticationResults -ConnectionMode $ConnectionMode `
-                    -Results $Results
-                $currentDSCBlock = Get-M365DSCExportContentForResource -ResourceName $ResourceName `
-                    -ConnectionMode $ConnectionMode `
-                    -ModulePath $PSScriptRoot `
-                    -Results $Results `
-                    -Credential $Credential
-                $dscContent += $currentDSCBlock
-                Save-M365DSCPartialExport -Content $currentDSCBlock `
-                    -FileName $Global:PartialExportFileName
-
-                Write-Host $Global:M365DSCEmojiGreenCheckMark
-            }
-            else
-            {
-                Write-Host $Global:M365DSCEmojiRedX
-            }
+            Write-Host $Global:M365DSCEmojiGreenCheckMark
         }
+        else
+        {
+            Write-Host "`r`n"-NoNewline
+        }
+        $dscContent = [System.Text.StringBuilder]::New()
+        foreach ($group in $Script:exportedInstances)
+        {
+            Write-Host "    |---[$i/$($Script:exportedInstances.Length)] $($group.DisplayName)" -NoNewline
+            $groupName = $group.DisplayName
+            if (-not [System.String]::IsNullOrEmpty($groupName))
+            {
+                $Params = @{
+                    Credential            = $Credential
+                    DisplayName           = $groupName
+                    ApplicationId         = $ApplicationId
+                    TenantId              = $TenantId
+                    CertificateThumbprint = $CertificateThumbprint
+                    CertificatePassword   = $CertificatePassword
+                    Managedidentity       = $ManagedIdentity.IsPresent
+                    CertificatePath       = $CertificatePath
+                }
+                $Results = Get-TargetResource @Params
 
-        $i++
+                if ($Results -is [System.Collections.Hashtable] -and $Results.Count -gt 1)
+                {
+                    $Results = Update-M365DSCExportAuthenticationResults -ConnectionMode $ConnectionMode `
+                        -Results $Results
+                    $currentDSCBlock = Get-M365DSCExportContentForResource -ResourceName $ResourceName `
+                        -ConnectionMode $ConnectionMode `
+                        -ModulePath $PSScriptRoot `
+                        -Results $Results `
+                        -Credential $Credential
+                    $dscContent.Append($currentDSCBlock) | Out-Null
+                    Save-M365DSCPartialExport -Content $currentDSCBlock `
+                        -FileName $Global:PartialExportFileName
+
+                    Write-Host $Global:M365DSCEmojiGreenCheckMark
+                }
+                else
+                {
+                    Write-Host $Global:M365DSCEmojiRedX
+                }
+            }
+            $i++
+        }
+        return $dscContent.ToString()
     }
-    return $dscContent
+    catch
+    {
+        Write-Host $Global:M365DSCEmojiRedX
+
+        New-M365DSCLogEntry -Message 'Error during Export:' `
+            -Exception $_ `
+            -Source $($MyInvocation.MyCommand.Source) `
+            -TenantId $TenantId `
+            -Credential $Credential
+
+        return ''
+    }
 }
 
 Export-ModuleMember -Function *-TargetResource

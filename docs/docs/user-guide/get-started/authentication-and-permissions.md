@@ -69,7 +69,7 @@ Most components of the Microsoft365DSC solution are using the Microsoft Graph Po
     For example: If your account only has permissions on three SharePoint sites, only these sites can be retrieved. Even when the AzureAD app has Sites.FullControll.All permissions granted.
 
     <figure markdown>
-      ![Using the Graph API with Delegated Permissions and the default App Registration](../../Images/PermissionsGraphDelegatedApp.png)
+      ![Using the Graph API with Delegated Permissions and the default App Registration](/Images/PermissionsGraphDelegatedApp.png)
       <figcaption>Using the Graph API with Delegated Permissions and the default App Registration</figcaption>
     </figure>
 
@@ -84,7 +84,7 @@ Most components of the Microsoft365DSC solution are using the Microsoft Graph Po
     **NOTE:** This is the easiest option to use.
 
     <figure markdown>
-      ![Using the Graph API with a custom application](../../Images/PermissionsM365DSCApp.png)
+      ![Using the Graph API with a custom application](/Images/PermissionsM365DSCApp.png)
       <figcaption>Using the Graph API with a custom application</figcaption>
     </figure>
 
@@ -204,6 +204,149 @@ Get-M365DSCCompiledPermissionList -ResourceNameList @('EXOAcceptedDomain') -Sour
 Then make sure your service account is a member of the specified Role Group or has been granted the required roles.
 
 **NOTE:** There are resources, like the <a href="../../../resources/exchange/EXOAddressList/" target="_blank">EXOAddressList</a> which roles by default are not granted to any of the default role groups. Make sure you grant these permissions correctly before using them.
+
+## Security and Compliance Center Permissions
+
+If you want to leverage Service Principal Authentication (using an App Registration) for Security and Compliance Center, there are a few extra configuration steps that need to be followed to grant proper permission to your app. Failure to follow these steps will results in the the cmdlets returning empty results.
+
+<ol>
+<li><p><strong>Create a new Service Principal and associate it with your app registration:</strong></p>
+<p>Start by connecting to the Security and Compliance PowerShell module and run the following line to create the service principal. The cmdlets refer below won't be available if you don't connect first (use the Connect-IPPSsession cmdlet). The AppID and ObjectID represent the application id and its object id. You can retrieve these by navigating to your app instance on the Azure Portal or by leveraging the Get-MgApplication cmdlet from the Graph PowerShell SDK. In my case, my custom App Registration in Azure AD is named "MySCApp" and I am giving the name SC-SPN to the new service principal I am creating.</p>
+
+<a href="/Images/AppIdRetrieval.png"><img src="/Images/AppIdRetrieval.png" alt="Retrieving an app registration id from the Azure portal." /></a>
+
+<a href="/Images/CreatingNewSPForSC.png"><img src="/Images/CreatingNewSPForSC.png" alt="PowerShell Script to create a service principal" /></a>
+
+``` powershell
+$App = Get-MgApplication -Filter "DisplayName eq 'MySCApp'"
+New-ServicePrincipal -AppId $App.AppId -ServiceId $App.Id -DisplayName "SC-SPN"
+```
+</li>
+
+<li><p><strong>Grant the eDiscovery Manager role to your new Service Principal:</strong></p>
+<p>Run the following PowerShell command to grant the eDiscovery Manager role to your new Service Principal. The ID passed is the Object ID of the Service Principal you created at the previous step. If you don't have it handy, you can use the Get-ServicePrincipal cmdlet to retrieve it.</p>
+
+<a href="/Images/AddSPNeDiscoveryRole.png"><img src="/Images/AddSPNeDiscoveryRole.png" alt="Grant the eDiscovery Manager role to your service principal" /></a>
+
+``` PowerShell
+$SPN = Get-ServicePrincipal -Identity "SC-SPN"
+Add-RoleGroupMember -Identity eDiscoveryManager -Member $SPN.ObjectId
+```
+</li>
+
+<li>
+<p><strong>Add the Service Principal as a case admin:</strong>
+
+<p>The Service Principal requires one last permission in order to be able to retrieve values from the Security and COmpliance center cmdlets. Run the following PowerShell command to add it as a case admin:</p>
+
+<a href="/Images/Add-eDiscoveryCaseAdmin.png"><img src="/Images/Add-eDiscoveryCaseAdmin.png" alt="Grant the eDiscovery Case Admin role to your service principal" /></a>
+
+``` PowerShell
+$SPN = Get-ServicePrincipal -Identity "SC-SPN"
+Add-eDiscoveryCaseAdmin -User $SPN.Name
+```
+</p>
+</li>
+<li><p><strong>Grant your app registration the Compliance Administrator role:</strong></p>
+<p>The last required step is to add your app registration to the Compliance Administrator role.</p>
+
+<a href="/Images/AddComplianceAdmin.png"><img src="/Images/AddComplianceAdmin.png" alt="Add your app registration to the compliance administrator role." /></a>
+</li>
+
+</ol>
+<p>We are now ready to authenticate using our app registration to test and confirm that all is working as expected. To do so, you can use the Connect-M365Tenant cmdlet and pass it the information related to your app registration. Below is an example using our app registration. Replace the appid, tenantid and certificatethumbprint parameters by your own. If you are getting an error connecting, you probably haven't granted the Exchange ManageAsApp permission to your app as described in the following article: <a href="https://learn.microsoft.com/en-us/powershell/exchange/app-only-auth-powershell-v2?view=exchange-ps#step-2-assign-api-permissions-to-the-application">https://learn.microsoft.com/en-us/powershell/exchange/app-only-auth-powershell-v2?view=exchange-ps#step-2-assign-api-permissions-to-the-application</a></p>
+
+<a href="/Images/GetComplianceCase.png"><img src="/Images/GetComplianceCase.png" alt="Connecting using your app registration and retrieving cases." /></a>
+
+``` PowerShell
+Connect-M365Tenant -ApplicationId '8154ba3e-3e73-450e-8690-53cfc0eb0d66' -TenantId 'xxxx.onmicrosoft.com' -CertificateThumbprint 'xxx-xxx-xxx-xxx-xxx' -Workload 'SecurityComplianceCenter'
+Get-ComplianceCase
+```
+
+## Permissions for SharePoint and OneDrive
+
+The latest version of Microsoft365DSC support both user and AzureAD App principal authentication. It is recommended to use AzureAD app authentication for several reasons. The first is that when granting permission to the AAD App it will ensure it has permissions to all SharePoint and OneDrive resources. The second reason is that most organizations enforce MFA authentication on user account that have roles assigned to them. This will cause issues when monitoring or apply changes to SharePoint or OneDrive as it will prompt for MFA numerous times. AzureAD app and user based authentication both can have passwords stored in compiled MOF files so ensure the are secured. Please refer to following video
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/SCZv79wZNh0?start=9" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+### User based authentication
+
+When using a user account with Microsoft365DSC make sure the account is a cloud only user account for example admin@contoso.onmicrosoft.com. Microsoft365DSC uses account name for determining tenant within the resources so using federate accounts may cause issue when running Microsoft365DSC.
+
+### Roles and permissions
+
+When using user based authentication several of the resources do support the Global reader role. The following resources support global reader:
+
+- SPOApp
+- SPOSearchManagedProperty
+- SPOSearchResultSource
+- SPOStorageEntity
+- SPOTenantCdnEnabled
+- SPOTenantCdnPolicy
+- SPOUserProfileProperty
+
+All SharePoint and OneDrive resources work with the SharePoint Admin role assigned. The SPOSiteGroup resource will error if the account doesn't have site collection admin permissions even if account is has the role of SharePoint admin. This is why we recommend using AAD App permissions. This role does provide full control so it can also be used for pushing configurations to your tenant. Lastly using an account that has Global Admin permissions typically permissions to entire tenant and can be used on all SharePoint and OneDrive resources.
+
+When executing the Export-M365DSCConfiguration cmdlet user name and password should be filled in the following fields:
+
+![User name and Password](/Images/userpwdpng.png 'Username and Password')
+
+### Azure AD app permissions
+
+The best option when using Microsoft365DSC with SharePoint and OneDrive is to use an Azure AD app principal. When using AAD App permission Microsoft365DSC supports 2 different scenarios, certificate path option or installing certificate and using the thumbprint. The permissions required for Azure AD applications are SharePoint Site.FullControl.All scope.
+
+![API Permissions](/Images/APIPermissions.png 'SharePoint Permissions')
+
+### Configure AzureAD app for Microsoft365DSC
+
+The SharePoint PNP team created a cmdlet that simplifies the setup of AzureAD App called [Register-PnPAzureADApp](https://pnp.github.io/powershell/cmdlets/Register-PnPAzureADApp). The following script can be used to create the AzureAD app permissions needed for Microsoft365DSC
+
+```PowerShell
+Register-PnPAzureADApp -ApplicationName TestApp2 -Tenant contoso.onmicrosoft.com -OutPath C:\DSC -CertificatePassword (ConvertTo-SecureString -String "password" -AsPlainText -Force) -Store CurrentUser -Scopes "SPO.Sites.FullControl.All"
+```
+
+This cmdlet will open a dialog box to authenticate to Azure AD and grant admin consent once its created the AzureAD app. It will also install
+the certificate in current user store and output a PFX file in the C:\DSC directory. If you plan to use the certificate thumbprint option when using
+DSC by default the LCM runs under the system account so easiest option to install in cert store is by using [PSExec](https://docs.microsoft.com/en-us/sysinternals/downloads/psexec). To install certificate under system account using PSExec run the following:
+
+    1. .\PsExec.exe -s -i mmc.exe
+    2. File add / remove snapin > Select certificates > MyUser account
+    3. Open Certificate - Current User and select Personal
+    4. Select import certificate and browse to location from outpath in code from above and select the PFX file
+
+After AzureAD app is created and certificate is installed you need some additional properties before you can use with Microsoft365DSC. Login to
+Azure Active Directory and browse to the App registrations page you should see the TestApp2 app created from the script above. We need to copy the following properties:
+
+![Application Id](/Images/AppId.png 'Application ID')
+
+![Certificate Thumbprint](/Images/CertificateThump.png 'Certificate Thumbprint')
+
+### Using Certificate Thumbprint option
+
+When running the export or creating configuration files for resources the following are the required parameters for authentication
+when using certificate thumbprint.
+
+    * ApplicationID
+    * TenantID  - This must be in format of contoso.onmicrosoft.com
+    * CertificateThumbprint
+
+From the Export-M365DSCConfiguration GUI the following fields should be used:
+
+![ExportThumprint](/Images/ExportCertThumb.png 'Export using thumbprint')
+
+### Using Certificate Path option
+
+There are times when using Microsoft365DSC you may need to use the certificate path option. For example using Azure DevOps to monitor tenant for configuration drift you would not have access to install certificates on the build agents. In this scenario using the certificate path option
+would be the best solution. The following parameters are required when using certificate path:
+
+    * ApplicationID
+    * TenantID  - this must be in format of contoso.onmicrosoft.com
+    * CertificatePath - this is path to the PFX certificate on local machine ex: c:\dsc\testapp2.pfx
+    * CertificatePassword - password for certificate
+
+From the Export-M365DSCConfiguration GUI the following fields should be used:
+
+![Export using Certificate Path](/Images/CertPath.png){ align=center width=500 }
 
 ## Using Authentication in DSC configurations
 
