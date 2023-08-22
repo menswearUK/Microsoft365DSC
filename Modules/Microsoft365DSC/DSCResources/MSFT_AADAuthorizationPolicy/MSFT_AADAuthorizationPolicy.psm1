@@ -48,6 +48,14 @@ function Get-TargetResource
 
         [Parameter()]
         [System.Boolean]
+        $DefaultUserRoleAllowedToReadBitlockerKeysForOwnedDevice,
+
+        [Parameter()]
+        [System.Boolean]
+        $DefaultUserRoleAllowedToCreateTenants,
+
+        [Parameter()]
+        [System.Boolean]
         $DefaultUserRoleAllowedToReadOtherUsers,
 
         [Parameter()]
@@ -92,8 +100,7 @@ function Get-TargetResource
 
     Write-Verbose -Message 'Getting configuration of AzureAD Authorization Policy'
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
-        -InboundParameters $PSBoundParameters `
-        -ProfileName 'v1.0'
+        -InboundParameters $PSBoundParameters
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -113,7 +120,7 @@ function Get-TargetResource
 
     try
     {
-        $Policy = Get-MgPolicyAuthorizationPolicy -ErrorAction Stop
+        $Policy = Get-MgBetaPolicyAuthorizationPolicy -ErrorAction Stop
     }
     catch
     {
@@ -144,30 +151,28 @@ function Get-TargetResource
         Write-Verbose -Message 'Get-TargetResource: Found existing authorization policy'
 
         $result = @{
-            IsSingleInstance                                  = 'Yes'
-            DisplayName                                       = $Policy.DisplayName
-            Description                                       = $Policy.Description
-            AllowedToSignUpEmailBasedSubscriptions            = $Policy.AllowedToSignUpEmailBasedSubscriptions
-            AllowedToUseSSPR                                  = $Policy.AllowedToUseSSPR
-            AllowEmailVerifiedUsersToJoinOrganization         = $Policy.AllowEmailVerifiedUsersToJoinOrganization
-            AllowInvitesFrom                                  = $Policy.AllowInvitesFrom
-            BlockMsolPowerShell                               = $Policy.BlockMsolPowerShell
-            DefaultUserRoleAllowedToCreateApps                = $Policy.DefaultUserRolePermissions.AllowedToCreateApps
-            DefaultUserRoleAllowedToCreateSecurityGroups      = $Policy.DefaultUserRolePermissions.AllowedToCreateSecurityGroups
-            DefaultUserRoleAllowedToReadOtherUsers            = $Policy.DefaultUserRolePermissions.AllowedToReadOtherUsers
-            #v1.0 profile
-            PermissionGrantPolicyIdsAssignedToDefaultUserRole = $Policy.DefaultUserRolePermissions.PermissionGrantPoliciesAssigned
-            #beta-profile
-            #PermissionGrantPolicyIdsAssignedToDefaultUserRole = $Policy.PermissionGrantPolicyIdsAssignedToDefaultUserRole
-            GuestUserRole                                     = Get-GuestUserRoleNameFromId -GuestUserRoleId $Policy.GuestUserRoleId
-            #Standard part
-            Ensure                                            = 'Present'
-            Credential                                        = $Credential
-            ApplicationSecret                                 = $ApplicationSecret
-            ApplicationId                                     = $ApplicationId
-            TenantId                                          = $TenantId
-            CertificateThumbprint                             = $CertificateThumbprint
-            Managedidentity                                   = $ManagedIdentity.IsPresent
+            IsSingleInstance                                        = 'Yes'
+            DisplayName                                             = $Policy.DisplayName
+            Description                                             = $Policy.Description
+            AllowedToSignUpEmailBasedSubscriptions                  = $Policy.AllowedToSignUpEmailBasedSubscriptions
+            AllowedToUseSSPR                                        = $Policy.AllowedToUseSSPR
+            AllowEmailVerifiedUsersToJoinOrganization               = $Policy.AllowEmailVerifiedUsersToJoinOrganization
+            AllowInvitesFrom                                        = $Policy.AllowInvitesFrom
+            BlockMsolPowerShell                                     = $Policy.BlockMsolPowerShell
+            DefaultUserRoleAllowedToCreateApps                      = $Policy.DefaultUserRolePermissions.AllowedToCreateApps
+            DefaultUserRoleAllowedToCreateSecurityGroups            = $Policy.DefaultUserRolePermissions.AllowedToCreateSecurityGroups
+            DefaultUserRoleAllowedToReadOtherUsers                  = $Policy.DefaultUserRolePermissions.AllowedToReadOtherUsers
+            DefaultUserRoleAllowedToReadBitlockerKeysForOwnedDevice = $Policy.DefaultUserRolePermissions.AllowedToReadBitlockerKeysForOwnedDevice
+            DefaultUserRoleAllowedToCreateTenants                   = $Policy.DefaultUserRolePermissions.AllowedToCreateTenants
+            PermissionGrantPolicyIdsAssignedToDefaultUserRole       = $Policy.DefaultUserRolePermissions.PermissionGrantPoliciesAssigned
+            GuestUserRole                                           = Get-GuestUserRoleNameFromId -GuestUserRoleId $Policy.GuestUserRoleId
+            Ensure                                                  = 'Present'
+            Credential                                              = $Credential
+            ApplicationSecret                                       = $ApplicationSecret
+            ApplicationId                                           = $ApplicationId
+            TenantId                                                = $TenantId
+            CertificateThumbprint                                   = $CertificateThumbprint
+            Managedidentity                                         = $ManagedIdentity.IsPresent
         }
 
         Write-Verbose -Message "Get-TargetResource Result: `n $(Convert-M365DscHashtableToString -Hashtable $result)"
@@ -221,6 +226,14 @@ function Set-TargetResource
         [Parameter()]
         [System.Boolean]
         $DefaultUserRoleAllowedToCreateSecurityGroups,
+
+        [Parameter()]
+        [System.Boolean]
+        $DefaultUserRoleAllowedToReadBitlockerKeysForOwnedDevice,
+
+        [Parameter()]
+        [System.Boolean]
+        $DefaultUserRoleAllowedToCreateTenants,
 
         [Parameter()]
         [System.Boolean]
@@ -294,7 +307,9 @@ function Set-TargetResource
     $currentParameters.Remove('ManagedIdentity') | Out-Null
 
     Write-Verbose -Message 'Set-Targetresource: Authorization Policy Ensure Present'
-    $UpdateParameters = @{}
+    $UpdateParameters = @{
+        AuthorizationPolicyId = 'authorizationPolicy'
+    }
     # update policy with supplied parameters that are different from existing policy
 
     # prepare object for default user role permissions
@@ -355,7 +370,7 @@ function Set-TargetResource
     try
     {
         Write-Verbose -Message "Updating existing authorization policy with values: $(Convert-M365DscHashtableToString -Hashtable $UpdateParameters)"
-        $response = Update-MgPolicyAuthorizationPolicy @updateParameters -ErrorAction Stop
+        $response = Update-MgBetaPolicyAuthorizationPolicy @updateParameters -ErrorAction Stop
     }
     catch
     {
@@ -366,6 +381,7 @@ function Set-TargetResource
             -Credential $Credential
 
         Write-Verbose -Message "Set-Targetresource: Failed change policy $DisplayName"
+        Write-Verbose -Message $_
     }
     Write-Verbose -Message "Set-Targetresource: finished processing Policy $Displayname"
 }
@@ -417,6 +433,14 @@ function Test-TargetResource
         [Parameter()]
         [System.Boolean]
         $DefaultUserRoleAllowedToCreateSecurityGroups,
+
+        [Parameter()]
+        [System.Boolean]
+        $DefaultUserRoleAllowedToReadBitlockerKeysForOwnedDevice,
+
+        [Parameter()]
+        [System.Boolean]
+        $DefaultUserRoleAllowedToCreateTenants,
 
         [Parameter()]
         [System.Boolean]
@@ -525,8 +549,7 @@ function Export-TargetResource
     #endregion
 
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
-        -InboundParameters $PSBoundParameters `
-        -ProfileName 'v1.0'
+        -InboundParameters $PSBoundParameters
 
     try
     {

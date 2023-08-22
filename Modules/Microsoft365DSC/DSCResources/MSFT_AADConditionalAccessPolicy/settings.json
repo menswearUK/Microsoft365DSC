@@ -1,6 +1,14 @@
 ﻿{
     "resourceName": "AADConditionalAccessPolicy",
     "description": "This resource configures an Azure Active Directory Conditional Access Policy.",
+    "roles": {
+        "read": [
+            "Security Reader"
+        ],
+        "update": [
+            "Conditional Access Administrator"
+        ]
+    },
     "permissions": {
         "graph": {
             "delegated": {
@@ -45,12 +53,15 @@
             "application": {
                 "read": [
                     {
-                        "name": "NotSupported"
+                        "name": "Policy.Read.All"
                     }
                 ],
                 "update": [
                     {
-                        "name": "NotSupported"
+                        "name": "Application.Read.All"
+                    },
+                    {
+                        "name": "Policy.ReadWrite.ConditionalAccess"
                     }
                 ]
             }

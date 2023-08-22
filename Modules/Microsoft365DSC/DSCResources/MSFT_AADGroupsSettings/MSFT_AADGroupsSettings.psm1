@@ -15,6 +15,10 @@ function Get-TargetResource
 
         [Parameter()]
         [System.Boolean]
+        $EnableMIPLabels,
+
+        [Parameter()]
+        [System.Boolean]
         $AllowGuestsToBeGroupOwner,
 
         [Parameter()]
@@ -69,8 +73,7 @@ function Get-TargetResource
 
     Write-Verbose -Message 'Getting configuration of AzureAD Groups Settings'
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
-        -InboundParameters $PSBoundParameters `
-        -ProfileName 'beta'
+        -InboundParameters $PSBoundParameters
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -88,7 +91,7 @@ function Get-TargetResource
     $nullReturn.Ensure = 'Absent'
     try
     {
-        $Policy = Get-MgDirectorySetting | Where-Object -FilterScript { $_.DisplayName -eq 'Group.Unified' }
+        $Policy = Get-MgBetaDirectorySetting | Where-Object -FilterScript { $_.DisplayName -eq 'Group.Unified' }
 
         if ($null -eq $Policy)
         {
@@ -96,7 +99,7 @@ function Get-TargetResource
         }
         else
         {
-            Write-Verbose -Message 'Found existing AzureAD Groups Settings'
+            Write-Verbose -Message 'Found existing AzureAD DirectorySetting for Group.Unified'
             $AllowedGroupName = $null
             $GroupCreationValue = $Policy.Values | Where-Object -FilterScript { $_.Name -eq 'GroupCreationAllowedGroupId' }
             if (-not [System.String]::IsNullOrEmpty($GroupCreationValue.Value))
@@ -110,6 +113,7 @@ function Get-TargetResource
             }
 
             $valueEnableGroupCreation = $Policy.Values | Where-Object -FilterScript { $_.Name -eq 'EnableGroupCreation' }
+            $valueEnableMIPLabels = $Policy.Values | Where-Object -FilterScript { $_.Name -eq 'EnableMIPLabels' }
             $valueAllowGuestsToBeGroupOwner = $Policy.Values | Where-Object -FilterScript { $_.Name -eq 'AllowGuestsToBeGroupOwner' }
             $valueAllowGuestsToAccessGroups = $Policy.Values | Where-Object -FilterScript { $_.Name -eq 'AllowGuestsToAccessGroups' }
             $valueGuestUsageGuidelinesUrl = $Policy.Values | Where-Object -FilterScript { $_.Name -eq 'GuestUsageGuidelinesUrl' }
@@ -119,6 +123,7 @@ function Get-TargetResource
             $result = @{
                 IsSingleInstance          = 'Yes'
                 EnableGroupCreation       = [Boolean]::Parse($valueEnableGroupCreation.Value)
+                EnableMIPLabels           = [Boolean]::Parse($valueEnableMIPLabels.Value)
                 AllowGuestsToBeGroupOwner = [Boolean]::Parse($valueAllowGuestsToBeGroupOwner.Value)
                 AllowGuestsToAccessGroups = [Boolean]::Parse($valueAllowGuestsToAccessGroups.Value)
                 GuestUsageGuidelinesUrl   = $valueGuestUsageGuidelinesUrl.Value
@@ -167,6 +172,10 @@ function Set-TargetResource
         [Parameter()]
         [System.Boolean]
         $EnableGroupCreation,
+
+        [Parameter()]
+        [System.Boolean]
+        $EnableMIPLabels,
 
         [Parameter()]
         [System.Boolean]
@@ -242,11 +251,11 @@ function Set-TargetResource
     $needToUpdate = $false
     if ($Ensure -eq 'Present' -and $currentPolicy.Ensure -eq 'Absent')
     {
-        $Policy = New-MgDirectorySetting -TemplateId '62375ab9-6b52-47ed-826b-58e47e0e304b' | Out-Null
+        $Policy = New-MgBetaDirectorySetting -TemplateId '62375ab9-6b52-47ed-826b-58e47e0e304b' | Out-Null
         $needToUpdate = $true
     }
 
-    $Policy = Get-MgDirectorySetting | Where-Object -FilterScript { $_.DisplayName -eq 'Group.Unified' }
+    $Policy = Get-MgBetaDirectorySetting | Where-Object -FilterScript { $_.DisplayName -eq 'Group.Unified' }
 
     if (($Ensure -eq 'Present' -and $currentPolicy.Ensure -eq 'Present') -or $needToUpdate)
     {
@@ -267,6 +276,11 @@ function Set-TargetResource
             {
                 $entry = $Policy.Values | Where-Object -FilterScript { $_.Name -eq 'EnableGroupCreation' }
                 $entry.Value = [System.Boolean]$EnableGroupCreation
+            }
+            elseif ($property.Name -eq 'EnableMIPLabels')
+            {
+                $entry = $Policy.Values | Where-Object -FilterScript { $_.Name -eq 'EnableMIPLabels' }
+                $entry.Value = [System.Boolean]$EnableMIPLabels
             }
             elseif ($property.Name -eq 'AllowGuestsToBeGroupOwner')
             {
@@ -302,7 +316,7 @@ function Set-TargetResource
         }
 
         Write-Verbose -Message "Updating Policy's Values with $($Policy.Values | Out-String)"
-        Update-MgDirectorySetting -DirectorySettingId $Policy.id -Values $Policy.Values | Out-Null
+        Update-MgBetaDirectorySetting -DirectorySettingId $Policy.id -Values $Policy.Values | Out-Null
     }
     elseif ($Ensure -eq 'Absent' -and $currentPolicy.Ensure -eq 'Present')
     {
@@ -325,6 +339,10 @@ function Test-TargetResource
         [Parameter()]
         [System.Boolean]
         $EnableGroupCreation,
+
+        [Parameter()]
+        [System.Boolean]
+        $EnableMIPLabels,
 
         [Parameter()]
         [System.Boolean]
@@ -400,9 +418,6 @@ function Test-TargetResource
     Write-Verbose -Message "Target Values: $(Convert-M365DscHashtableToString -Hashtable $PSBoundParameters)"
 
     $ValuesToCheck = $PSBoundParameters
-    $ValuesToCheck.Remove('ApplicationId') | Out-Null
-    $ValuesToCheck.Remove('TenantId') | Out-Null
-    $ValuesToCheck.Remove('ApplicationSecret') | Out-Null
 
     $TestResult = Test-M365DSCParameterState -CurrentValues $CurrentValues `
         -Source $($MyInvocation.MyCommand.Source) `
@@ -446,8 +461,7 @@ function Export-TargetResource
     )
 
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
-        -InboundParameters $PSBoundParameters `
-        -ProfileName 'beta'
+        -InboundParameters $PSBoundParameters
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies

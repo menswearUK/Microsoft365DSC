@@ -34,19 +34,20 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
             Mock -CommandName Remove-PSSession -MockWith {
             }
 
-            Mock -CommandName Update-MgDeviceManagementDeviceConfiguration -MockWith {
+            Mock -CommandName Update-MgBetaDeviceManagementDeviceConfiguration -MockWith {
             }
 
-            Mock -CommandName New-MgDeviceManagementDeviceConfiguration -MockWith {
+            Mock -CommandName New-MgBetaDeviceManagementDeviceConfiguration -MockWith {
             }
 
-            Mock -CommandName Remove-MgDeviceManagementDeviceConfiguration -MockWith {
+            Mock -CommandName Remove-MgBetaDeviceManagementDeviceConfiguration -MockWith {
             }
 
             Mock -CommandName New-M365DSCConnection -MockWith {
                 return 'Credentials'
             }
-
+            Mock -CommandName Update-DeviceConfigurationPolicyAssignment -MockWith {
+            }
             # Mock Write-Host to hide output during the tests
             Mock -CommandName Write-Host -MockWith {
             }
@@ -159,7 +160,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential                                     = $Credential
                 }
 
-                Mock -CommandName Get-MgDeviceManagementDeviceConfiguration -MockWith {
+                Mock -CommandName Get-MgBetaDeviceManagementDeviceConfiguration -MockWith {
                     return $null
                 }
             }
@@ -171,7 +172,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
             }
             It 'Should Create the group from the Set method' {
                 Set-TargetResource @testParams
-                Should -Invoke -CommandName New-MgDeviceManagementDeviceConfiguration -Exactly 1
+                Should -Invoke -CommandName New-MgBetaDeviceManagementDeviceConfiguration -Exactly 1
             }
         }
 
@@ -281,7 +282,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential                                     = $Credential
                 }
 
-                Mock -CommandName Get-MgDeviceManagementDeviceConfiguration -MockWith {
+                Mock -CommandName Get-MgBetaDeviceManagementDeviceConfiguration -MockWith {
                     return @{
                         AdditionalProperties = @{
                             AppsBlockCopyPaste                             = $True
@@ -400,7 +401,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
             It 'Should Remove the group from the Set method' {
                 Set-TargetResource @testParams
-                Should -Invoke -CommandName Remove-MgDeviceManagementDeviceConfiguration -Exactly 1
+                Should -Invoke -CommandName Remove-MgBetaDeviceManagementDeviceConfiguration -Exactly 1
             }
         }
         Context -Name 'The IntuneDeviceConfigurationPolicyAndroidDeviceAdministrator Exists and Values are already in the desired state' -Fixture {
@@ -409,7 +410,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     AppsBlockClipboardSharing                      = $True
                     AppsBlockCopyPaste                             = $True
                     AppsBlockYouTube                               = $True
-                    AppsHideList                                   = @(
+                    AppsHideList                                   = [CimInstance[]]@(
                             (New-CimInstance -ClassName MSFT_MicrosoftGraphapplistitem -Property @{
                             appId       = 'FakeStringValue'
                             publisher   = 'FakeStringValue'
@@ -419,7 +420,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
                         } -ClientOnly)
                     )
-                    AppsInstallAllowList                           = @(
+                    AppsInstallAllowList                           = [CimInstance[]]@(
                             (New-CimInstance -ClassName MSFT_MicrosoftGraphapplistitem -Property @{
                             appId       = 'FakeStringValue'
                             publisher   = 'FakeStringValue'
@@ -429,7 +430,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
                         } -ClientOnly)
                     )
-                    AppsLaunchBlockList                            = @(
+                    AppsLaunchBlockList                            = [CimInstance[]]@(
                             (New-CimInstance -ClassName MSFT_MicrosoftGraphapplistitem -Property @{
                             appId       = 'FakeStringValue'
                             publisher   = 'FakeStringValue'
@@ -446,13 +447,13 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     CellularBlockVoiceRoaming                      = $True
                     CellularBlockWiFiTethering                     = $True
                     CompliantAppListType                           = 'none'
-                    CompliantAppsList                              = @(
+                    CompliantAppsList                              = [CimInstance[]]@(
                             (New-CimInstance -ClassName MSFT_MicrosoftGraphapplistitem -Property @{
-                            appId       = 'FakeStringValue'
-                            publisher   = 'FakeStringValue'
-                            appStoreUrl = 'FakeStringValue'
-                            name        = 'FakeStringValue'
-                            odataType   = '#microsoft.graph.appleAppListItem'
+                                name          = 'FakeName'
+                                appId         = 'FakeAppId'
+                                appStoreUrl   = 'FakeStoreUrl'
+                                odataType     = '#microsoft.graph.appleAppListItem'
+                                publisher     = 'FakePublisher'
 
                         } -ClientOnly)
                     )
@@ -465,7 +466,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     GoogleAccountBlockAutoSync                     = $True
                     GooglePlayStoreBlocked                         = $True
                     Id                                             = 'FakeStringValue'
-                    KioskModeApps                                  = @(
+                    KioskModeApps                                  = [CimInstance[]]@(
                             (New-CimInstance -ClassName MSFT_MicrosoftGraphapplistitem -Property @{
                             appId       = 'FakeStringValue'
                             publisher   = 'FakeStringValue'
@@ -509,7 +510,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential                                     = $Credential
                 }
 
-                Mock -CommandName Get-MgDeviceManagementDeviceConfiguration -MockWith {
+                Mock -CommandName Get-MgBetaDeviceManagementDeviceConfiguration -MockWith {
                     return @{
                         AdditionalProperties = @{
                             AppsBlockCopyPaste                             = $True
@@ -517,7 +518,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                             PowerOffBlocked                                = $True
                             KioskModeBlockSleepButton                      = $True
                             ScreenCaptureBlocked                           = $True
-                            AppsLaunchBlockList                            = @(
+                            appsLaunchBlockList                            = @(
                                 @{
                                     name          = 'FakeStringValue'
                                     appId         = 'FakeStringValue'
@@ -578,13 +579,13 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                             CameraBlocked                                  = $True
                             WebBrowserCookieSettings                       = 'browserDefault'
                             DeviceSharingAllowed                           = $True
-                            CompliantAppsList                              = @(
+                            compliantAppsList                              = @(
                                 @{
-                                    name          = 'FakeStringValue'
-                                    appId         = 'FakeStringValue'
-                                    appStoreUrl   = 'FakeStringValue'
+                                    name          = 'FakeName'
+                                    appId         = 'FakeAppId'
+                                    appStoreUrl   = 'FakeStoreUrl'
                                     '@odata.type' = '#microsoft.graph.appleAppListItem'
-                                    publisher     = 'FakeStringValue'
+                                    publisher     = 'FakePublisher'
 
                                 }
                             )
@@ -630,7 +631,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     AppsBlockClipboardSharing                      = $True
                     AppsBlockCopyPaste                             = $True
                     AppsBlockYouTube                               = $True
-                    AppsHideList                                   = @(
+                    AppsHideList                                   = [CimInstance[]]@(
                             (New-CimInstance -ClassName MSFT_MicrosoftGraphapplistitem -Property @{
                             appId       = 'FakeStringValue'
                             publisher   = 'FakeStringValue'
@@ -640,7 +641,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
                         } -ClientOnly)
                     )
-                    AppsInstallAllowList                           = @(
+                    AppsInstallAllowList                           = [CimInstance[]]@(
                             (New-CimInstance -ClassName MSFT_MicrosoftGraphapplistitem -Property @{
                             appId       = 'FakeStringValue'
                             publisher   = 'FakeStringValue'
@@ -650,7 +651,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
                         } -ClientOnly)
                     )
-                    AppsLaunchBlockList                            = @(
+                    AppsLaunchBlockList                            = [CimInstance[]]@(
                             (New-CimInstance -ClassName MSFT_MicrosoftGraphapplistitem -Property @{
                             appId       = 'FakeStringValue'
                             publisher   = 'FakeStringValue'
@@ -667,7 +668,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     CellularBlockVoiceRoaming                      = $True
                     CellularBlockWiFiTethering                     = $True
                     CompliantAppListType                           = 'none'
-                    CompliantAppsList                              = @(
+                    CompliantAppsList                              = [CimInstance[]]@(
                             (New-CimInstance -ClassName MSFT_MicrosoftGraphapplistitem -Property @{
                             appId       = 'FakeStringValue'
                             publisher   = 'FakeStringValue'
@@ -686,7 +687,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     GoogleAccountBlockAutoSync                     = $True
                     GooglePlayStoreBlocked                         = $True
                     Id                                             = 'FakeStringValue'
-                    KioskModeApps                                  = @(
+                    KioskModeApps                                  = [CimInstance[]]@(
                             (New-CimInstance -ClassName MSFT_MicrosoftGraphapplistitem -Property @{
                             appId       = 'FakeStringValue'
                             publisher   = 'FakeStringValue'
@@ -730,10 +731,10 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential                                     = $Credential
                 }
 
-                Mock -CommandName Get-MgDeviceManagementDeviceConfiguration -MockWith {
+                Mock -CommandName Get-MgBetaDeviceManagementDeviceConfiguration -MockWith {
                     return @{
                         AdditionalProperties = @{
-                            AppsLaunchBlockList                            = @(
+                            appsLaunchBlockList                            = @(
                                 @{
                                     name          = 'FakeStringValue'
                                     appId         = 'FakeStringValue'
@@ -743,7 +744,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
                                 }
                             )
-                            AppsInstallAllowList                           = @(
+                            appsInstallAllowList                           = @(
                                 @{
                                     name          = 'FakeStringValue'
                                     appId         = 'FakeStringValue'
@@ -756,7 +757,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                             PasswordSignInFailureCountBeforeFactoryReset   = 7
                             '@odata.type'                                  = '#microsoft.graph.androidGeneralDeviceConfiguration'
                             RequiredPasswordComplexity                     = 'none'
-                            AppsHideList                                   = @(
+                            appsHideList                                   = @(
                                 @{
                                     name          = 'FakeStringValue'
                                     appId         = 'FakeStringValue'
@@ -770,7 +771,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                             PasswordMinutesOfInactivityBeforeScreenTimeout = 7
                             CompliantAppListType                           = 'none'
                             WebBrowserCookieSettings                       = 'browserDefault'
-                            CompliantAppsList                              = @(
+                            compliantAppsList                              = @(
                                 @{
                                     name          = 'FakeStringValue'
                                     appId         = 'FakeStringValue'
@@ -781,7 +782,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                                 }
                             )
                             PasswordPreviousPasswordBlockCount             = 7
-                            KioskModeApps                                  = @(
+                            kioskModeApps                                  = @(
                                 @{
                                     name          = 'FakeStringValue'
                                     appId         = 'FakeStringValue'
@@ -813,7 +814,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
             It 'Should call the Set method' {
                 Set-TargetResource @testParams
-                Should -Invoke -CommandName Update-MgDeviceManagementDeviceConfiguration -Exactly 1
+                Should -Invoke -CommandName Update-MgBetaDeviceManagementDeviceConfiguration -Exactly 1
             }
         }
 
@@ -823,7 +824,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential = $Credential
                 }
 
-                Mock -CommandName Get-MgDeviceManagementDeviceConfiguration -MockWith {
+                Mock -CommandName Get-MgBetaDeviceManagementDeviceConfiguration -MockWith {
                     return @{
                         AdditionalProperties = @{
                             AppsBlockCopyPaste                             = $True

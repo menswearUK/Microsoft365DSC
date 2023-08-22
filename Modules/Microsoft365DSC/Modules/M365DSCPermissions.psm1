@@ -63,8 +63,24 @@ function Get-M365DSCCompiledPermissionList
     }
 
     $results = @{
-        Read               = @()
-        Update             = @()
+        Read               = @(
+            @{
+                API        = 'Graph'
+                Permission = @{
+                    Name = 'Organization.Read.All'
+                    Type = 'Application'
+                }
+            }
+        )
+        Update             = @(
+            @{
+                API        = 'Graph'
+                Permission = @{
+                    Name = 'Organization.Read.All'
+                    Type = 'Application'
+                }
+            }
+        )
         RequiredRoles      = @()
         RequiredRoleGroups = @()
     }
@@ -1176,6 +1192,19 @@ The provided permissions have to be as an array of hashtables, with Api=Graph, S
 or Exchange and PermissionsName set to a list of permissions. See examples for more information.
 
 NOTE:
+Please make sure you have the following permissions for the 'Microsoft Graph Command Line Tools'
+Enterprise Application in your tenant:
+
+- Application.ReadWrite.All
+
+You can add this scope to the 'Microsoft Graph Command Line Tools' Enterprise Application by running
+the following command:
+
+```powershell
+Connect-MgGraph -Scopes 'Application.ReadWrite.All'
+```
+
+NOTE:
 If consent cannot be given for whatever reason, make sure all these permissions are
 given Admin Consent by browsing to the App Registration in Azure AD > API Permissions
 and clicking the "Grant admin consent for <orgname>" button.
@@ -1189,14 +1218,69 @@ If you want to configure App-Only permission for Exchange, as described here:
 https://docs.microsoft.com/en-us/powershell/exchange/app-only-auth-powershell-v2?view=exchange-ps#step-2-assign-api-permissions-to-the-application
 Using the following permission will achieve exactly that: @{Api='Exchange';PermissionsName='Exchange.ManageAsApp'}
 
+Note 2:
+If you want to configure App-Only permission for Security and compliance, please refer to this information on how to setup the permissions:
+https://microsoft365dsc.com/user-guide/get-started/authentication-and-permissions/#security-and-compliance-center-permissions
+
+Note 3:
+If you want to configure App-Only permission for Power Platform, please refer to this information on how to setup the permissions:
+https://microsoft365dsc.com/user-guide/get-started/authentication-and-permissions/#power-apps-permissions
+
+
+.Parameter ApplicationName
+The name of the application to create or update. Default value is 'Microsoft365DSC'.
+
+.Parameter Permissions
+The permissions to assign to the application. This has to be an array of hashtables, with Api=Graph, SharePoint or Exchange and PermissionsName set to a list of permissions. See examples for more information.
+
+.Parameter Type
+The type of credential to create. Default value is 'Secret'. Valid values are 'Secret' and 'Certificate'.
+
+.Parameter MonthsValid
+The number of months the certificate should be valid. Default value is 12.
+
+.Parameter CreateNewSecret
+If specified, a new secret will be created for the application. -CreateNewSecret or -CertificatePath can be used, not both.
+
+.Parameter CertificatePath
+The path to the certificate to be uploaded for the app registration. If using with -CreateSelfSignedCertificate - a file with this name will be created and uploaded (file must not exist). Otherwise the file must already exist. Cannot be used with -CreateNewSecret simultaneously.
+
+.Parameter CreateSelfSignedCertificate
+If specified, a self-signed certificate will be created for the application. -CreateSelfSignedCertificate or -CertificatePath can be used, not both.
+
+.Parameter AdminConsent
+If specified, admin consent will be granted for the application.
+
+.Parameter Credential
+The credential to use for authenticating the request. Mutually exclusive with -TenantId.
+
+.Parameter ApplicationId
+The ApplicationId to use for authenticating the request. -Credential or -ApplicationId can be used, not both.
+
+.Parameter TenantId
+The name of the tenant to use for the request. Must be in the form of contoso.onmicrosoft.com. Mutually exclusive with -Credential.
+
+.Parameter ApplicationSecret
+The ApplicationSecret to use for authenticating the request. -Credential or -ApplicationSecret can be used, not both.
+
+.Parameter CertificateThumbprint
+Thumbprint of an existing auth certificate to use for authenticating the request. Mutually exclusive with -Credential.
+
+.Parameter ManagedIdentity
+If specified, Managed Identity will be used for authenticating the request. -Credential or -ApplicationId or -ManagedIdentity can be used, only one of them.
+
 .Example
 Update-M365DSCAzureAdApplication -ApplicationName 'Microsoft365DSC' -Permissions @(@{Api='SharePoint';PermissionName='Sites.FullControl.All'}) -AdminConsent -Type Secret -Credential $creds
 
-.Example
+.EXAMPLE
 Update-M365DSCAzureAdApplication -ApplicationName 'Microsoft365DSC' -Permissions @(@{Api='Graph';PermissionName='Domain.Read.All'}) -AdminConsent  -Credential $creds -Type Certificate -CreateSelfSignedCertificate -CertificatePath c:\Temp\M365DSC.cer
 
-.Example
+.EXAMPLE
 Update-M365DSCAzureAdApplication -ApplicationName 'Microsoft365DSC' -Permissions @(@{Api='SharePoint';PermissionName='Sites.FullControl.All'},@{Api='Graph';PermissionName='Group.ReadWrite.All'},@{Api='Exchange';PermissionName='Exchange.ManageAsApp'}) -AdminConsent -Credential $creds -Type Certificate -CertificatePath c:\Temp\M365DSC.cer
+
+.EXAMPLE
+Update-M365DSCAzureAdApplication -ApplicationName $Microsoft365DSC -Permissions $(Get-M365DSCCompiledPermissionList -ResourceNameList Get-M365DSCAllResources -PermissionType Application -AccessType Read) -Type Certificate -CreateSelfSignedCertificate -AdminConsent -MonthsValid 12 -Credential $creds -CertificatePath c:\Temp\M365DSC.cer
+
 
 .Functionality
 Public
@@ -1400,11 +1484,10 @@ function Update-M365DSCAzureAdApplication
     {
         Write-LogEntry ' '
         Write-LogEntry 'Checking app permissions'
-        $permissionsSet = $false
-        $allRequiredAccess = @()
+        $allRequiredAccess = @{}
         foreach ($permission in $Permissions)
         {
-            if ($permission.Api -eq $null -or $permission.Api -notin @('Graph', 'SharePoint', 'Exchange'))
+            if ($null -eq $permission.Api -or $permission.Api -notin @('Graph', 'SharePoint', 'Exchange'))
             {
                 Write-LogEntry "Specified permission is invalid $(Convert-M365DscHashtableToString -Hashtable $permission)" -Type Warning
                 continue
@@ -1431,22 +1514,36 @@ function Update-M365DSCAzureAdApplication
 
             if ($null -eq $appRole)
             {
-                $currentAPIAccess = @{
-                    ResourceAppId  = $svcprincipal.AppId
-                    ResourceAccess = @()
+                $currentAPIAccess = $allRequiredAccess.($svcprincipal.AppId)
+
+                if ($null -eq $currentAPIAccess)
+                {
+                    $allRequiredAccess.Add(($svcprincipal.AppId), @())
                 }
                 $role = $svcPrincipal.AppRoles | Where-Object -FilterScript { $_.Value -eq $permission.PermissionName }
-                $appPermission = @{
-                    Id   = $role.Id
-                    Type = 'Role'
-                }
-                $currentAPIAccess.ResourceAccess += $appPermission
-                $permissionsSet = $true
-
-                if ($null -ne $currentAPIAccess)
+                if ($null -eq $role)
                 {
-                    $allRequiredAccess += $currentAPIAccess
+                    $ObjectGuid = [System.Guid]::empty
+                    if ([System.Guid]::TryParse($permission.PermissionName , [System.Management.Automation.PSReference]$ObjectGuid))
+                    {
+                        $appPermission = @{
+                            Id   = $permission.PermissionName
+                            Type = 'Role'
+                        }
+                    }
+                    else
+                    {
+                        continue
+                    }
                 }
+                else
+                {
+                    $appPermission = @{
+                        Id   = $role.Id
+                        Type = 'Role'
+                    }
+                }
+                $allRequiredAccess.($svcprincipal.AppId) += $appPermission
             }
             else
             {
@@ -1454,14 +1551,33 @@ function Update-M365DSCAzureAdApplication
             }
         }
 
+        $requiredResourceAccess = @()
+        foreach ($provider in $allRequiredAccess.Keys)
+        {
+            $valueToAdd = @{
+                ResourceAppId  = $provider
+                ResourceAccess = @()
+            }
+
+            foreach ($permissionEntry in $allRequiredAccess.$provider)
+            {
+                $permissionToAdd = @{
+                    Type = $permissionEntry.Type
+                    Id   = $permissionEntry.Id
+                }
+                $valueToAdd.ResourceAccess += $permissionToAdd
+            }
+            $requiredResourceAccess += $valueToAdd
+        }
+
         Update-MgApplication -ApplicationId ($azureADApp.Id) `
-            -RequiredResourceAccess $allRequiredAccess | Out-Null
+            -RequiredResourceAccess $requiredResourceAccess | Out-Null
 
         Write-LogEntry '    Permission updated for application'
 
         if ($AdminConsent)
         {
-            if (-not $PSBoundParameters.ContainsKey("Credential"))
+            if (-not $PSBoundParameters.ContainsKey('Credential'))
             {
                 Write-LogEntry '[ERROR] You need to provide admin credentials when specifying the AdminConsent parameter.'
             }
@@ -1484,18 +1600,18 @@ function Update-M365DSCAzureAdApplication
                 $password = $Credential.GetNetworkCredential().password
 
                 $url = "https://main.iam.ad.ext.azure.com/api/Directories/$($tenant.tenantId)/Details"
-                $uri = "https://login.microsoftonline.com/{0}/oauth2/token" -f $tenantid
-                $body = "resource=74658136-14ec-4630-ad9b-26e160ff0fc6&client_id=1950a258-227b-4e31-a9cf-717495945fc2&grant_type=password&username={1}&password={0}" -f [System.Web.HttpUtility]::UrlEncode($password), $username
+                $uri = 'https://login.microsoftonline.com/{0}/oauth2/token' -f $tenantid
+                $body = 'resource=74658136-14ec-4630-ad9b-26e160ff0fc6&client_id=1950a258-227b-4e31-a9cf-717495945fc2&grant_type=password&username={1}&password={0}' -f [System.Web.HttpUtility]::UrlEncode($password), $username
                 $token = Invoke-RestMethod $uri `
                     -Method POST `
                     -Body $body `
-                    -ContentType "application/x-www-form-urlencoded" `
+                    -ContentType 'application/x-www-form-urlencoded' `
                     -ErrorAction SilentlyContinue
 
                 $headers = @{
-                    Authorization = "Bearer $($token.access_token)";
-                    "x-ms-client-request-id" = [guid]::NewGuid().ToString();
-                    "x-ms-client-session-id" = [guid]::NewGuid().ToString()
+                    Authorization            = "Bearer $($token.access_token)"
+                    'x-ms-client-request-id' = [guid]::NewGuid().ToString()
+                    'x-ms-client-session-id' = [guid]::NewGuid().ToString()
                 }
 
                 $applicationId = $azureADApp.AppId
@@ -1548,8 +1664,8 @@ function Update-M365DSCAzureAdApplication
                     $passwordCred = @{
                         displayName = 'Created by Microsoft365DSC'
                         endDateTime = $endDate
-                     }
-                    $appCred = Add-MgApplicationPassword -ApplicationId $azureADApp.Id -PasswordCredential  $passwordCred
+                    }
+                    $appCred = Add-MgApplicationPassword -ApplicationId $azureADApp.Id -PasswordCredential $passwordCred
                 }
             }
             'Certificate'
@@ -1612,12 +1728,46 @@ function Update-M365DSCAzureAdApplication
 
                     Write-LogEntry "    Certificate details: $($cerCert.Subject) ($($cerCert.Thumbprint))"
                     $params = @{
-                        Type = "AsymmetricX509Cert"
-                        Usage = "Verify"
-                        Key = $cerCert.GetRawCertData()
+                        Type        = 'AsymmetricX509Cert'
+                        Usage       = 'Verify'
+                        Key         = $cerCert.GetRawCertData()
                         EndDateTime = $endDate
                     }
-                    $appCred = Update-MgApplication -ApplicationId $azureAdApp.Id -KeyCredentials $params
+
+                    $maxRetries = 3
+                    $retryCount = 0
+                    $retryDelay = 10 # seconds
+
+                    do
+                    {
+                        try
+                        {
+                            $appCred = Update-MgApplication -ApplicationId $azureAdApp.Id -KeyCredentials $params
+                            break # exit the loop if the operation succeeds
+                        }
+                        catch
+                        {
+                            if ($_.Exception.Message -match 'Key credential end date is invalid')
+                            {
+                                Write-Host "Caught error: $($_.Exception.Message)"
+                                if ($retryCount -lt $maxRetries)
+                                {
+                                    $retryCount++
+                                    Write-Host "Retrying in $retryDelay seconds..."
+                                    Start-Sleep -Seconds $retryDelay
+                                }
+                                else
+                                {
+                                    Write-Host 'Maximum number of retries reached.'
+                                    throw # re-throw the exception if the maximum number of retries is reached
+                                }
+                            }
+                            else
+                            {
+                                throw # re-throw the exception if it's not the expected error
+                            }
+                        }
+                    } while ($true)
                 }
             }
         }

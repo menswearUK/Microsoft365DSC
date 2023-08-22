@@ -79,8 +79,7 @@ function Get-TargetResource
     try
     {
         $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
-            -InboundParameters $PSBoundParameters `
-            -ProfileName 'beta'
+            -InboundParameters $PSBoundParameters
     }
     catch
     {
@@ -106,7 +105,7 @@ function Get-TargetResource
         $getValue = $null
 
         #region resource generator code
-        $getValue = Get-MgEntitlementManagementAccessPackage -AccessPackageId $id `
+        $getValue = Get-MgBetaEntitlementManagementAccessPackage -AccessPackageId $id `
             -ExpandProperty "accessPackageResourceRoleScopes(`$expand=accessPackageResourceRole,accessPackageResourceScope)" `
             -ErrorAction SilentlyContinue
 
@@ -116,7 +115,7 @@ function Get-TargetResource
 
             if (-Not [string]::IsNullOrEmpty($DisplayName))
             {
-                $getValue = Get-MgEntitlementManagementAccessPackage `
+                $getValue = Get-MgBetaEntitlementManagementAccessPackage `
                     -Filter "displayName eq '$DisplayName'" `
                     -ExpandProperty "accessPackageResourceRoleScopes(`$expand=accessPackageResourceRole,accessPackageResourceScope)" `
                     -ErrorAction SilentlyContinue
@@ -143,7 +142,7 @@ function Get-TargetResource
         }
 
         $getIncompatibleAccessPackages = @()
-        [Array]$query = Get-MgEntitlementManagementAccessPackageIncompatibleAccessPackage -AccessPackageId $getValue.id
+        [Array]$query = Get-MgBetaEntitlementManagementAccessPackageIncompatibleAccessPackage -AccessPackageId $getValue.id
         if ($query.count -gt 0)
         {
             $getIncompatibleAccessPackages += $query.id
@@ -151,14 +150,14 @@ function Get-TargetResource
 
 
         $getAccessPackagesIncompatibleWith = @()
-        [Array]$query = Get-MgEntitlementManagementAccessPackageIncompatibleWith -AccessPackageId $getValue.id
+        [Array]$query = Get-MgBetaEntitlementManagementAccessPackageIncompatibleWith -AccessPackageId $getValue.id
         if ($query.count -gt 0)
         {
             $getIncompatibleAccessPackages += $query.id
         }
 
         $getIncompatibleGroups = @()
-        [Array]$query = Get-MgEntitlementManagementAccessPackageIncompatibleGroup -AccessPackageId $getValue.id
+        [Array]$query = Get-MgBetaEntitlementManagementAccessPackageIncompatibleGroup -AccessPackageId $getValue.id
         if ($query.count -gt 0)
         {
             $getIncompatibleGroups += $query.id
@@ -278,8 +277,7 @@ function Set-TargetResource
     try
     {
         $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
-            -InboundParameters $PSBoundParameters `
-            -ProfileName 'beta'
+            -InboundParameters $PSBoundParameters
     }
     catch
     {
@@ -322,7 +320,7 @@ function Set-TargetResource
         $CreateParameters.Remove('AccessPackagesIncompatibleWith') | Out-Null
         $CreateParameters.Remove('IncompatibleGroups') | Out-Null
 
-        $accessPackage = New-MgEntitlementManagementAccessPackage `
+        $accessPackage = New-MgBetaEntitlementManagementAccessPackage `
             -BodyParameter $CreateParameters
 
         #endregion
@@ -334,7 +332,7 @@ function Set-TargetResource
                 '@odata.id' = "https://graph.microsoft.com/beta/identityGovernance/entitlementManagement/accessPackages/$incompatibleAccessPackage"
             }
 
-            New-MgEntitlementManagementAccessPackageIncompatibleAccessPackageByRef `
+            New-MgBetaEntitlementManagementAccessPackageIncompatibleAccessPackageByRef `
                 -AccessPackageId $accessPackage.Id `
                 -OdataId $ref.'@odata.id'
         }
@@ -347,7 +345,7 @@ function Set-TargetResource
                 '@odata.id' = "https://graph.microsoft.com/beta/groups/$IncompatibleGroup"
             }
 
-            New-MgEntitlementManagementAccessPackageIncompatibleGroupByRef `
+            New-MgBetaEntitlementManagementAccessPackageIncompatibleGroupByRef `
                 -AccessPackageId $accessPackage.Id `
                 -OdataId $ref.'@odata.id'
         }
@@ -362,12 +360,12 @@ function Set-TargetResource
 
             Write-Verbose -Message "Adding roleScope {$originId`:$roleName} to access package with Id {$($accessPackage.Id)}"
 
-            $resourceScope = Get-MgEntitlementManagementAccessPackageCatalogAccessPackageResource `
+            $resourceScope = Get-MgBetaEntitlementManagementAccessPackageCatalogAccessPackageResource `
                 -AccessPackageCatalogId $CatalogId `
                 -Filter "originId eq '$originId'" `
                 -ExpandProperty 'accessPackageResourceScopes'
 
-            $resourceRole = Get-MgEntitlementManagementAccessPackageCatalogAccessPackageResourceRole `
+            $resourceRole = Get-MgBetaEntitlementManagementAccessPackageCatalogAccessPackageResourceRole `
                 -AccessPackageCatalogId $CatalogId `
                 -Filter "(accessPackageResource/Id eq '$($resourceScope.id)' and displayname eq '$roleName' and originSystem eq '$($resourceScope.originSystem)')" `
                 -ExpandProperty 'accessPackageResource'
@@ -408,7 +406,7 @@ function Set-TargetResource
 
                 Write-Verbose -Message ("package id {$($accessPackage.Id)}")
                 Write-Verbose -Message ($params | ConvertTo-Json -Depth 20)
-                New-MgEntitlementManagementAccessPackageResourceRoleScope -AccessPackageId $accessPackage.Id -BodyParameter $params
+                New-MgBetaEntitlementManagementAccessPackageResourceRoleScope -AccessPackageId $accessPackage.Id -BodyParameter $params
             }
         }
         #endregion
@@ -428,7 +426,7 @@ function Set-TargetResource
         $UpdateParameters.Remove('AccessPackagesIncompatibleWith') | Out-Null
         $UpdateParameters.Remove('IncompatibleGroups') | Out-Null
 
-        Update-MgEntitlementManagementAccessPackage -BodyParameter $UpdateParameters `
+        Update-MgBetaEntitlementManagementAccessPackage -BodyParameter $UpdateParameters `
             -AccessPackageId $currentInstance.Id
         #endregion
 
@@ -454,7 +452,7 @@ function Set-TargetResource
                 '@odata.id' = "https://graph.microsoft.com/beta/identityGovernance/entitlementManagement/accessPackages/$incompatibleAccessPackage"
             }
 
-            New-MgEntitlementManagementAccessPackageIncompatibleAccessPackageByRef `
+            New-MgBetaEntitlementManagementAccessPackageIncompatibleAccessPackageByRef `
                 -AccessPackageId $currentInstance.Id `
                 -OdataId $ref.'@odata.id'
         }
@@ -463,7 +461,7 @@ function Set-TargetResource
 
         foreach ($incompatibleAccessPackage in $toBeRemoved.InputObject)
         {
-            Remove-MgEntitlementManagementAccessPackageIncompatibleAccessPackageByRef `
+            Remove-MgBetaEntitlementManagementAccessPackageIncompatibleAccessPackageByRef `
                 -AccessPackageId $currentInstance.Id `
                 -AccessPackageId1 $incompatibleAccessPackage
         }
@@ -491,7 +489,7 @@ function Set-TargetResource
                 '@odata.id' = "https://graph.microsoft.com/beta/groups/$incompatibleGroup"
             }
 
-            New-MgEntitlementManagementAccessPackageIncompatibleGroupByRef `
+            New-MgBetaEntitlementManagementAccessPackageIncompatibleGroupByRef `
                 -AccessPackageId $currentInstance.Id `
                 -OdataId $ref.'@odata.id'
         }
@@ -500,7 +498,7 @@ function Set-TargetResource
 
         foreach ($IncompatibleGroup in $toBeRemoved.InputObject)
         {
-            Remove-MgEntitlementManagementAccessPackageIncompatibleGroupByRef `
+            Remove-MgBetaEntitlementManagementAccessPackageIncompatibleGroupByRef `
                 -AccessPackageId $currentInstance.Id `
                 -GroupId $incompatibleGroup
         }
@@ -518,12 +516,12 @@ function Set-TargetResource
 
                 Write-Verbose -Message "Adding roleScope {$originId`:$roleName} to access package with Id {$($currentInstance.Id)}"
 
-                $resourceScope = Get-MgEntitlementManagementAccessPackageCatalogAccessPackageResource `
+                $resourceScope = Get-MgBetaEntitlementManagementAccessPackageCatalogAccessPackageResource `
                     -AccessPackageCatalogId $CatalogId `
                     -Filter "originId eq '$originId'" `
                     -ExpandProperty 'accessPackageResourceScopes'
 
-                $resourceRole = Get-MgEntitlementManagementAccessPackageCatalogAccessPackageResourceRole `
+                $resourceRole = Get-MgBetaEntitlementManagementAccessPackageCatalogAccessPackageResourceRole `
                     -AccessPackageCatalogId $CatalogId `
                     -Filter "(accessPackageResource/Id eq '$($resourceScope.id)' and displayname eq '$roleName' and originSystem eq '$($resourceScope.originSystem)')" `
                     -ExpandProperty 'accessPackageResource'
@@ -562,7 +560,7 @@ function Set-TargetResource
                         }
                     }
 
-                    New-MgEntitlementManagementAccessPackageResourceRoleScope -AccessPackageId $currentInstance.Id -BodyParameter $params
+                    New-MgBetaEntitlementManagementAccessPackageResourceRoleScope -AccessPackageId $currentInstance.Id -BodyParameter $params
                 }
                 #endregion
             }
@@ -579,12 +577,12 @@ function Set-TargetResource
 
                     Write-Verbose -Message "Updating role {$roleName} from access package rolescope with Id {$($accessPackageResourceRoleScope.id)}"
 
-                    $resourceScope = Get-MgEntitlementManagementAccessPackageCatalogAccessPackageResource `
+                    $resourceScope = Get-MgBetaEntitlementManagementAccessPackageCatalogAccessPackageResource `
                         -AccessPackageCatalogId $CatalogId `
                         -Filter "originId eq '$originId'" `
                         -ExpandProperty 'accessPackageResourceScopes'
 
-                    $resourceRole = Get-MgEntitlementManagementAccessPackageCatalogAccessPackageResourceRole `
+                    $resourceRole = Get-MgBetaEntitlementManagementAccessPackageCatalogAccessPackageResourceRole `
                         -AccessPackageCatalogId $CatalogId `
                         -Filter "(accessPackageResource/Id eq '$($resourceScope.id)' and displayname eq '$roleName' and originSystem eq '$($resourceScope.originSystem)')" `
                         -ExpandProperty 'accessPackageResource'
@@ -623,11 +621,13 @@ function Set-TargetResource
                             }
                         }
 
-                        Remove-MgEntitlementManagementAccessPackageResourceRoleScope `
+                        #write-verbose -message ($params|convertTo-json -depth 20)
+
+                        Remove-MgBetaEntitlementManagementAccessPackageResourceRoleScope `
                             -AccessPackageId $currentInstance.Id  `
                             -AccessPackageResourceRoleScopeId $currentRole.Id
 
-                        New-MgEntitlementManagementAccessPackageResourceRoleScope `
+                        New-MgBetaEntitlementManagementAccessPackageResourceRoleScope `
                             -AccessPackageId $currentInstance.Id `
                             -BodyParameter $params
 
@@ -648,7 +648,7 @@ function Set-TargetResource
 
             Write-Verbose -Message "Removing RoleScope with originId {$originId} from access package {$($currentInstance.Id)}"
 
-            Remove-MgEntitlementManagementAccessPackageResourceRoleScope `
+            Remove-MgBetaEntitlementManagementAccessPackageResourceRoleScope `
                 -AccessPackageId $currentInstance.Id  `
                 -AccessPackageResourceRoleScopeId $currentRoleScope.Id
         }
@@ -660,7 +660,7 @@ function Set-TargetResource
         Write-Verbose -Message "Removing access package with id {$id} and displayName {$DisplayName}"
 
         #region resource generator code
-        Remove-MgEntitlementManagementAccessPackage -AccessPackageId $currentInstance.Id
+        Remove-MgBetaEntitlementManagementAccessPackage -AccessPackageId $currentInstance.Id
         #endregion
     }
 }
@@ -800,14 +800,10 @@ function Test-TargetResource
     }
 
     $ValuesToCheck.Remove('Id') | Out-Null
-    $ValuesToCheck.Remove('Credential') | Out-Null
-    $ValuesToCheck.Remove('ApplicationId') | Out-Null
-    $ValuesToCheck.Remove('TenantId') | Out-Null
-    $ValuesToCheck.Remove('ApplicationSecret') | Out-Null
     $ValuesToCheck.Remove('AccessPackagesIncompatibleWith') | Out-Null #read-only
 
-    #Write-Verbose -Message "Current Values: $(Convert-M365DscHashtableToString -Hashtable $CurrentValues)"
-    #Write-Verbose -Message "Target Values: $(Convert-M365DscHashtableToString -Hashtable $ValuesToCheck)"
+    Write-Verbose -Message "Current Values: $(Convert-M365DscHashtableToString -Hashtable $CurrentValues)"
+    Write-Verbose -Message "Target Values: $(Convert-M365DscHashtableToString -Hashtable $ValuesToCheck)"
 
     if ($testResult)
     {
@@ -854,8 +850,7 @@ function Export-TargetResource
     )
 
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
-        -InboundParameters $PSBoundParameters `
-        -ProfileName 'beta'
+        -InboundParameters $PSBoundParameters
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -873,7 +868,7 @@ function Export-TargetResource
     {
 
         #region resource generator code
-        [array]$getValue = Get-MgEntitlementManagementAccessPackage `
+        [array]$getValue = Get-MgBetaEntitlementManagementAccessPackage `
             -All `
             -ErrorAction Stop
 
@@ -955,7 +950,7 @@ function Export-TargetResource
     {
         if ($_.ErrorDetails.Message -like '*User is not authorized to perform the operation.*')
         {
-            Write-Host "`r`n    $($Global:M365DSCEmojiYellowCircle) Tenant does not meet license requirement to extract this component."
+            Write-Host "`r`n    $($Global:M365DSCEmojiYellowCircle) Tenant does not meet license requirement to extract this component or the user has not been granted the proper permissions."
         }
         else
         {
@@ -970,554 +965,6 @@ function Export-TargetResource
 
         return ''
     }
-}
-
-function Get-M365DSCDRGComplexTypeToHashtable
-{
-    [CmdletBinding()]
-    [OutputType([hashtable], [hashtable[]])]
-    param
-    (
-        [Parameter()]
-        $ComplexObject
-    )
-
-    if ($null -eq $ComplexObject)
-    {
-        return $null
-    }
-
-    if ($ComplexObject.getType().Fullname -like '*hashtable')
-    {
-        return $ComplexObject
-    }
-    if ($ComplexObject.getType().Fullname -like '*hashtable[[\]]')
-    {
-        return , [hashtable[]]$ComplexObject
-    }
-
-    if ($ComplexObject.gettype().fullname -like '*[[\]]')
-    {
-        $results = @()
-
-        foreach ($item in $ComplexObject)
-        {
-            if ($item)
-            {
-                $hash = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $item
-                $results += $hash
-            }
-        }
-
-        # PowerShell returns all non-captured stream output, not just the argument of the return statement.
-        #An empty array is mangled into $null in the process.
-        #However, an array can be preserved on return by prepending it with the array construction operator (,)
-        return , [hashtable[]]$results
-    }
-
-    $results = @{}
-
-    if ($ComplexObject.getType().Name -like 'Dictionary*')
-    {
-        $ComplexObject = [hashtable]::new($ComplexObject)
-        $keys = $ComplexObject.Keys
-        foreach ($key in $keys)
-        {
-            if ($null -ne $ComplexObject.$key)
-            {
-                $keyName = $key#.Name[0].ToString().ToLower() + $key.Name.Substring(1, $key.Name.Length - 1)
-
-                $keyType = $ComplexObject.$key.gettype().fullname
-                if ($keyType -like '*CimInstance*' -or $keyType -like 'Microsoft.Graph.PowerShell.Models.*' )
-                {
-                    $hash = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $ComplexObject.$key
-
-                    $results.Add($keyName, $hash)
-                }
-                else
-                {
-                    $results.Add($keyName, $ComplexObject.$key)
-                }
-            }
-        }
-        return [hashtable]$results
-    }
-
-    $keys = $ComplexObject | Get-Member | Where-Object -FilterScript { $_.MemberType -eq 'Property' -and $_.Name -ne 'AdditionalProperties' }
-
-    foreach ($key in $keys)
-    {
-        if ($null -ne $ComplexObject.$($key.Name))
-        {
-            $keyName = $key.Name[0].ToString().ToLower() + $key.Name.Substring(1, $key.Name.Length - 1)
-
-            if ($ComplexObject.$($key.Name).gettype().fullname -like '*CimInstance*')
-            {
-                $hash = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $ComplexObject.$($key.Name)
-
-                $results.Add($keyName, $hash)
-            }
-            else
-            {
-                $results.Add($keyName, $ComplexObject.$($key.Name))
-            }
-        }
-    }
-
-    return [hashtable]$results
-}
-
-function Get-M365DSCDRGComplexTypeToString
-{
-    [CmdletBinding()]
-    #[OutputType([System.String])]
-    param
-    (
-        [Parameter()]
-        $ComplexObject,
-
-        [Parameter(Mandatory = $true)]
-        [System.String]
-        $CIMInstanceName,
-
-        [Parameter()]
-        [Array]
-        $ComplexTypeMapping,
-
-        [Parameter()]
-        [System.String]
-        $Whitespace = '',
-
-        [Parameter()]
-        [System.uint32]
-        $IndentLevel = 3,
-
-        [Parameter()]
-        [switch]
-        $isArray = $false
-    )
-
-    if ($null -eq $ComplexObject)
-    {
-        return $null
-    }
-
-    $indent = ''
-    for ($i = 0; $i -lt $IndentLevel ; $i++)
-    {
-        $indent += '    '
-    }
-    #If ComplexObject  is an Array
-    if ($ComplexObject.GetType().FullName -like '*[[\]]')
-    {
-        $currentProperty = @()
-        $IndentLevel++
-        foreach ($item in $ComplexObject)
-        {
-            $splat = @{
-                'ComplexObject'   = $item
-                'CIMInstanceName' = $CIMInstanceName
-                'IndentLevel'     = $IndentLevel
-            }
-            if ($ComplexTypeMapping)
-            {
-                $splat.add('ComplexTypeMapping', $ComplexTypeMapping)
-            }
-
-            $currentProperty += Get-M365DSCDRGComplexTypeToString -isArray:$true @splat
-        }
-
-        # PowerShell returns all non-captured stream output, not just the argument of the return statement.
-        #An empty array is mangled into $null in the process.
-        #However, an array can be preserved on return by prepending it with the array construction operator (,)
-        return , $currentProperty
-    }
-
-    $currentProperty = ''
-    if ($isArray)
-    {
-        $currentProperty += "`r`n"
-        $currentProperty += $indent
-    }
-
-    $currentProperty += "MSFT_$CIMInstanceName{`r`n"
-    $IndentLevel++
-    $indent = ''
-    for ($i = 0; $i -lt $IndentLevel ; $i++)
-    {
-        $indent += '    '
-    }
-    $keyNotNull = 0
-    foreach ($key in $ComplexObject.Keys)
-    {
-        if ($null -ne $ComplexObject.$key)
-        {
-            $keyNotNull++
-            if ($ComplexObject.$key.GetType().FullName -like 'Microsoft.Graph.PowerShell.Models.*' -or $key -in $ComplexTypeMapping.Name)
-            {
-                $hashPropertyType = $ComplexObject[$key].GetType().Name.tolower()
-
-                #overwrite type if object defined in mapping complextypemapping
-                if ($key -in $ComplexTypeMapping.Name)
-                {
-                    $hashPropertyType = ($ComplexTypeMapping | Where-Object -FilterScript { $_.Name -eq $key }).CimInstanceName
-                    $hashProperty = $ComplexObject[$key]
-                }
-                else
-                {
-                    $hashProperty = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $ComplexObject[$key]
-                }
-
-                if (-not $isArray -or ($isArray -and $key -in $ComplexTypeMapping.Name ))
-                {
-                    $currentProperty += $indent + $key + ' = '
-                    if ($ComplexObject[$key].GetType().FullName -like '*[[\]]')
-                    {
-                        $currentProperty += '@('
-                    }
-                }
-
-                $currentProperty += Get-M365DSCDRGComplexTypeToString `
-                    -ComplexObject $hashProperty `
-                    -CIMInstanceName $hashPropertyType `
-                    -IndentLevel $IndentLevel `
-                    -ComplexTypeMapping $ComplexTypeMapping
-                if ($ComplexObject.$key.GetType().FullName -like '*[[\]]')
-                {
-                    $currentProperty += $indent
-                    $currentProperty += ')'
-                    $currentProperty += "`r`n"
-                }
-            }
-            else
-            {
-                $currentProperty += Get-M365DSCDRGSimpleObjectTypeToString -Key $key -Value $ComplexObject[$key] -Space ($indent)
-            }
-        }
-        else
-        {
-            $mappedKey = $ComplexTypeMapping | Where-Object -FilterScript { $_.name -eq $key }
-
-            if ($mappedKey -and $mappedKey.isRequired)
-            {
-                if ($mappedKey.isArray)
-                {
-                    $currentProperty += "$indent$key = @()`r`n"
-                }
-                else
-                {
-                    $currentProperty += "$indent$key = `$null`r`n"
-                }
-            }
-        }
-    }
-    $indent = ''
-    for ($i = 0; $i -lt $IndentLevel - 1 ; $i++)
-    {
-        $indent += '    '
-    }
-    $currentProperty += "$indent}`r`n"
-
-    #Indenting last parenthese when the cim instance is an array
-    if ($IndentLevel -eq 5)
-    {
-        $indent = ''
-        for ($i = 0; $i -lt $IndentLevel - 2 ; $i++)
-        {
-            $indent += '    '
-        }
-        $currentProperty += $indent
-    }
-    return $currentProperty
-}
-
-function Get-M365DSCDRGSimpleObjectTypeToString
-{
-    [CmdletBinding()]
-    [OutputType([System.String])]
-    param
-    (
-        [Parameter(Mandatory = 'true')]
-        [System.String]
-        $Key,
-
-        [Parameter(Mandatory = 'true')]
-        $Value,
-
-        [Parameter()]
-        [System.String]
-        $Space = '                '
-
-    )
-
-    $returnValue = ''
-    switch -Wildcard ($Value.GetType().Fullname )
-    {
-        '*.Boolean'
-        {
-            $returnValue = $Space + $Key + " = `$" + $Value.ToString() + "`r`n"
-        }
-        '*.String'
-        {
-            if ($key -eq '@odata.type')
-            {
-                $key = 'odataType'
-            }
-            $returnValue = $Space + $Key + " = '" + $Value + "'`r`n"
-        }
-        '*.DateTime'
-        {
-            $returnValue = $Space + $Key + " = '" + $Value + "'`r`n"
-        }
-        '*[[\]]'
-        {
-            $returnValue = $Space + $key + ' = @('
-            $whitespace = ''
-            $newline = ''
-            if ($Value.count -gt 1)
-            {
-                $returnValue += "`r`n"
-                $whitespace = $Space + '    '
-                $newline = "`r`n"
-            }
-            foreach ($item in $Value)
-            {
-                switch -Wildcard ($item.GetType().Fullname )
-                {
-                    '*.String'
-                    {
-                        $returnValue += "$whitespace'$item'$newline"
-                    }
-                    '*.DateTime'
-                    {
-                        $returnValue += "$whitespace'$item'$newline"
-                    }
-                    Default
-                    {
-                        $returnValue += "$whitespace$item$newline"
-                    }
-                }
-            }
-            if ($Value.count -gt 1)
-            {
-                $returnValue += "$Space)`r`n"
-            }
-            else
-            {
-                $returnValue += ")`r`n"
-            }
-        }
-        Default
-        {
-            $returnValue = $Space + $Key + ' = ' + $Value + "`r`n"
-        }
-    }
-    return $returnValue
-}
-
-function Compare-M365DSCComplexObject
-{
-    [CmdletBinding()]
-    [OutputType([System.Boolean])]
-    param
-    (
-        [Parameter()]
-        $Source,
-        [Parameter()]
-        $Target
-    )
-
-    #Comparing full objects
-    if ($null -eq $Source -and $null -eq $Target)
-    {
-        return $true
-    }
-
-    $sourceValue = ''
-    $targetValue = ''
-    if (($null -eq $Source) -xor ($null -eq $Target))
-    {
-        if ($null -eq $Source)
-        {
-            $sourceValue = 'Source is null'
-        }
-
-        if ($null -eq $Target)
-        {
-            $targetValue = 'Target is null'
-        }
-        Write-Verbose -Message "Configuration drift - Complex object: {$sourceValue$targetValue}"
-        return $false
-    }
-
-    if ($Source.getType().FullName -like '*CimInstance[[\]]' -or $Source.getType().FullName -like '*Hashtable[[\]]')
-    {
-        if ($source.count -ne $target.count)
-        {
-            Write-Verbose -Message "Configuration drift - The complex array have different number of items: Source {$($source.count)} Target {$($target.count)}"
-            return $false
-        }
-        if ($source.count -eq 0)
-        {
-            return $true
-        }
-
-        #$i=0
-        foreach ($item in $Source)
-        {
-
-            $hashSource = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $item
-            foreach ($targetItem in $Target)
-            {
-                $compareResult = Compare-M365DSCComplexObject `
-                    -Source $hashSource `
-                    -Target $targetItem
-
-                if ($compareResult)
-                {
-                    break
-                }
-            }
-
-            <#$compareResult= Compare-M365DSCComplexObject `
-                    -Source (Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $Source[$i]) `
-                    -Target $Target[$i]#>
-
-            if (-not $compareResult)
-            {
-                Write-Verbose -Message 'Configuration drift - The complex array items are not identical'
-                return $false
-            }
-            #$i++
-        }
-        return $true
-    }
-
-    $keys = $Source.Keys | Where-Object -FilterScript { $_ -ne 'PSComputerName' }
-    foreach ($key in $keys)
-    {
-        #write-verbose -message "Comparing key: {$key}"
-        #Matching possible key names between Source and Target
-        $skey = $key
-        $tkey = $key
-        if ($key -eq 'odataType')
-        {
-            #$skey='@odata.type'
-        }
-        else
-        {
-            $tmpkey = $Target.keys | Where-Object -FilterScript { $_ -eq "$key" }
-            if ($tkey)
-            {
-                $tkey = $tmpkey | Select-Object -First 1
-            }
-        }
-
-        $sourceValue = $Source.$key
-        $targetValue = $Target.$tkey
-        #One of the item is null and not the other
-        if (($null -eq $Source.$skey) -xor ($null -eq $Target.$tkey))
-        {
-            if ($null -eq $Source.$skey)
-            {
-                $sourceValue = 'null'
-            }
-
-            if ($null -eq $Target.$tkey)
-            {
-                $targetValue = 'null'
-            }
-
-            Write-Verbose -Message "Configuration drift - key: $key Source {$sourceValue} Target {$targetValue}"
-            return $false
-        }
-
-        #Both keys aren't null or empty
-        if (($null -ne $Source.$skey) -and ($null -ne $Target.$tkey))
-        {
-            if ($Source.$skey.getType().FullName -like '*CimInstance*' -or $Source.$skey.getType().FullName -like '*hashtable*'  )
-            {
-                #Recursive call for complex object
-                $compareResult = Compare-M365DSCComplexObject `
-                    -Source (Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $Source.$skey) `
-                    -Target $Target.$tkey
-
-                if (-not $compareResult)
-                {
-                    Write-Verbose -Message "Configuration drift - complex object key: $key Source {$sourceValue} Target {$targetValue}"
-                    return $false
-                }
-            }
-            else
-            {
-                #Simple object comparison
-                $referenceObject = $Target.$tkey
-                $differenceObject = $Source.$skey
-
-                $compareResult = Compare-Object `
-                    -ReferenceObject ($referenceObject) `
-                    -DifferenceObject ($differenceObject)
-
-                if ($null -ne $compareResult)
-                {
-                    #Write-Verbose -Message "Configuration drift - simple object key: $key Source {$sourceValue} Target {$targetValue}"
-                    return $false
-                }
-            }
-        }
-    }
-
-    return $true
-}
-
-function Convert-M365DSCDRGComplexTypeToHashtable
-{
-    [CmdletBinding()]
-    [OutputType([hashtable], [hashtable[]])]
-    param
-    (
-        [Parameter(Mandatory = 'true')]
-        $ComplexObject
-    )
-
-    if ($ComplexObject.getType().Fullname -like '*[[\]]')
-    {
-        $results = @()
-        foreach ($item in $ComplexObject)
-        {
-            $hash = Convert-M365DSCDRGComplexTypeToHashtable -ComplexObject $item
-            $results += $hash
-        }
-
-        #Write-Verbose -Message ("Convert-M365DSCDRGComplexTypeToHashtable >>> results: "+(convertTo-JSON $results -Depth 20))
-        # PowerShell returns all non-captured stream output, not just the argument of the return statement.
-        #An empty array is mangled into $null in the process.
-        #However, an array can be preserved on return by prepending it with the array construction operator (,)
-        return , [hashtable[]]$results
-    }
-    $hashComplexObject = Get-M365DSCDRGComplexTypeToHashtable -ComplexObject $ComplexObject
-
-    if ($null -ne $hashComplexObject)
-    {
-
-        $results = $hashComplexObject.clone()
-        $keys = $hashComplexObject.Keys | Where-Object -FilterScript { $_ -ne 'PSComputerName' }
-        foreach ($key in $keys)
-        {
-            if ($hashComplexObject[$key] -and $hashComplexObject[$key].getType().Fullname -like '*CimInstance*')
-            {
-                $results[$key] = Convert-M365DSCDRGComplexTypeToHashtable -ComplexObject $hashComplexObject[$key]
-            }
-            else
-            {
-                $propertyName = $key[0].ToString().ToLower() + $key.Substring(1, $key.Length - 1)
-                $propertyValue = $results[$key]
-                $results.remove($key) | Out-Null
-                $results.add($propertyName, $propertyValue)
-            }
-        }
-    }
-    return [hashtable]$results
 }
 
 Export-ModuleMember -Function *-TargetResource

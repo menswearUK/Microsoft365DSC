@@ -33,13 +33,13 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
             Mock -CommandName Remove-PSSession -MockWith {
             }
 
-            Mock -CommandName Update-MgDirectorySetting -MockWith {
+            Mock -CommandName Update-MgBetaDirectorySetting -MockWith {
             }
 
-            Mock -CommandName Remove-MgDirectorySetting -MockWith {
+            Mock -CommandName Remove-MgBetaDirectorySetting -MockWith {
             }
 
-            Mock -CommandName New-MgDirectorySetting -MockWith {
+            Mock -CommandName New-MgBetaDirectorySetting -MockWith {
             }
 
             Mock -CommandName 'Get-MgGroup' -MockWith {
@@ -77,7 +77,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
             }
 
             BeforeEach {
-                Mock -CommandName Get-MgDirectorySetting -MockWith {
+                Mock -CommandName Get-MgBetaDirectorySetting -MockWith {
                     if (-not $Script:calledOnceAlready)
                     {
                         $Script:calledOnceAlready = $true
@@ -97,7 +97,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
             }
             It 'Should return Values from the Get method' {
                 (Get-TargetResource @testParams).Ensure | Should -Be 'Absent'
-                Should -Invoke -CommandName 'Get-MgDirectorySetting' -Exactly 1
+                Should -Invoke -CommandName 'Get-MgBetaDirectorySetting' -Exactly 1
             }
 
             It 'Should return true from the Test method' {
@@ -105,7 +105,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                 Test-TargetResource @testParams | Should -Be $false
             }
             BeforeEach {
-                Mock -CommandName Get-MgDirectorySetting -MockWith {
+                Mock -CommandName Get-MgBetaDirectorySetting -MockWith {
                     if (-not $Script:calledOnceAlready)
                     {
                         $Script:calledOnceAlready = $true
@@ -126,8 +126,8 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
             It 'Should create and set the settings the Set method' {
                 $Script:calledOnceAlready = $false
                 Set-TargetResource @testParams
-                Should -Invoke -CommandName 'New-MgDirectorySetting' -Exactly 1
-                Should -Invoke -CommandName 'Update-MgDirectorySetting' -Exactly 1
+                Should -Invoke -CommandName 'New-MgBetaDirectorySetting' -Exactly 1
+                Should -Invoke -CommandName 'Update-MgBetaDirectorySetting' -Exactly 1
             }
         }
 
@@ -143,7 +143,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     return 'Credentials'
                 }
 
-                Mock -CommandName Get-MgDirectorySetting -MockWith {
+                Mock -CommandName Get-MgBetaDirectorySetting -MockWith {
                     return @{
                         DisplayName = 'Group.Unified'
                         Values      = @(
@@ -154,6 +154,10 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                             @{
                                 Name  = 'EnableGroupCreation'
                                 Value = $true
+                            },
+                            @{
+                                Name  = 'EnableMIPLabels'
+                                Value = $false
                             },
                             @{
                                 Name  = 'AllowGuestsToBeGroupOwner'
@@ -182,10 +186,10 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
             It 'Should return Values from the Get method' {
                 (Get-TargetResource @testParams).Ensure | Should -Be 'Present'
-                Should -Invoke -CommandName 'Get-MgDirectorySetting' -Exactly 1
+                Should -Invoke -CommandName 'Get-MgBetaDirectorySetting' -Exactly 1
             }
 
-            It 'Should return true from the Test method' {
+            It 'Should return false from the Test method' {
                 Test-TargetResource @testParams | Should -Be $false
             }
 
@@ -200,6 +204,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     AllowGuestsToBeGroupOwner     = $True
                     AllowToAddGuests              = $True
                     EnableGroupCreation           = $True
+                    EnableMIPLabels               = $True
                     Ensure                        = 'Present'
                     Credential                    = $Credential
                     GroupCreationAllowedGroupName = 'All Company'
@@ -212,7 +217,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     return 'Credentials'
                 }
 
-                Mock -CommandName Get-MgDirectorySetting -MockWith {
+                Mock -CommandName Get-MgBetaDirectorySetting -MockWith {
                     return @{
                         DisplayName = 'Group.Unified'
                         Values      = @(
@@ -222,6 +227,10 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                             },
                             @{
                                 Name  = 'EnableGroupCreation'
+                                Value = $true
+                            },
+                            @{
+                                Name  = 'EnableMIPLabels'
                                 Value = $true
                             },
                             @{
@@ -258,7 +267,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
             It 'Should return Values from the Get method' {
                 Get-TargetResource @testParams
-                Should -Invoke -CommandName 'Get-MgDirectorySetting' -Exactly 1
+                Should -Invoke -CommandName 'Get-MgBetaDirectorySetting' -Exactly 1
             }
 
             It 'Should return true from the Test method' {
@@ -273,6 +282,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     AllowGuestsToBeGroupOwner     = $True
                     AllowToAddGuests              = $True
                     EnableGroupCreation           = $False #Drift
+                    EnableMIPLabels               = $True #Drift
                     Ensure                        = 'Present'
                     Credential                    = $Credential
                     GroupCreationAllowedGroupName = 'All Company'
@@ -285,7 +295,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     return 'Credentials'
                 }
 
-                Mock -CommandName Get-MgDirectorySetting -MockWith {
+                Mock -CommandName Get-MgBetaDirectorySetting -MockWith {
                     return @{
                         DisplayName = 'Group.Unified'
                         Values      = @{
@@ -298,7 +308,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
             It 'Should return Values from the Get method' {
                 Get-TargetResource @testParams
-                Should -Invoke -CommandName 'Get-MgDirectorySetting' -Exactly 1
+                Should -Invoke -CommandName 'Get-MgBetaDirectorySetting' -Exactly 1
             }
 
             It 'Should return false from the Test method' {
@@ -307,7 +317,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
 
             It 'Should call the Set method' {
                 Set-TargetResource @testParams
-                Should -Invoke -CommandName 'Update-MgDirectorySetting' -Exactly 1
+                Should -Invoke -CommandName 'Update-MgBetaDirectorySetting' -Exactly 1
             }
         }
 
@@ -319,7 +329,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                     Credential = $Credential
                 }
 
-                Mock -CommandName Get-MgDirectorySetting -MockWith {
+                Mock -CommandName Get-MgBetaDirectorySetting -MockWith {
                     return @{
                         DisplayName = 'Group.Unified'
                         Values      = @{
