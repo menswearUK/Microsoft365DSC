@@ -19,6 +19,9 @@ Describe -Name 'Successfully validate all used permissions in Settings.json file
     BeforeAll {
         $data = Invoke-WebRequest -Uri 'https://graphpermissions.azurewebsites.net/api/GetPermissionList'
         $roles = $data.Content.Split('|')[0].Split(',')
+
+        # Fix for the Tasks name not matching the UI.
+        $roles += @('Tasks.Read.All', 'Tasks.ReadWrite.All')
         $delegated = $data.Content.Split('|')[1].Split(',')
     }
 
@@ -29,7 +32,9 @@ Describe -Name 'Successfully validate all used permissions in Settings.json file
         {
             # Only validate non-GUID (hidden) permissions.
             $ObjectGuid = [System.Guid]::empty
-            if (-not [System.Guid]::TryParse($permission.Name  ,[System.Management.Automation.PSReference]$ObjectGuid))
+            # There is an issue where the GUI shows Tasks.Read.All but the OAuth value is actually Tasks.Read
+            if (-not [System.Guid]::TryParse($permission.Name  ,[System.Management.Automation.PSReference]$ObjectGuid) -and
+                $permission.Name -ne 'Tasks.Read.All')
             {
                 $permission.Name | Should -BeIn $roles
             }

@@ -1,7 +1,97 @@
 # Change log for Microsoft365DSC
 
-# 1.23.719.1
+# UNRELEASED
 
+* O365SearchAndintelligenceConfigurations
+  * Removed support for Service Principal Auth, which the cmdlet never supported.
+* SPOHomeSite
+  * Fixes an issue if no home site exists
+    FIXES [#3577](https://github.com/microsoft/Microsoft365DSC/issues/3577)
+* DEPENDENCIES
+  * Updated Microsoft.Graph to version 2.4.0.
+  * Updated ReverseDSC to version 2.0.0.18
+* MISC
+  * Fixes an issue with the generic export CIM Instance logic.
+    FIXES [#3610](https://github.com/microsoft/Microsoft365DSC/issues/3610)
+
+# 1.23.823.1
+
+* AADAuthorizationPolicy
+  * Fix issue with property PermissionGrantPolicyIdsAssignedToDefaultUserRole
+    FIXES [#3594](https://github.com/microsoft/Microsoft365DSC/issues/3594)
+* AADGroupsSettings
+  * Add support for enabling sensitivity labels in M365-groups
+* EXOSafeAttachmentPolicy
+  * Deprecated ActionOnError Parameter
+    FIXES [#3579](https://github.com/microsoft/Microsoft365DSC/issues/3579)
+* IntuneEndpointDetectionAndResponsePolicyWindows10
+  * Initial release
+    FIXES [#3349](https://github.com/microsoft/Microsoft365DSC/issues/3349)
+* O365OrgSettings
+  * Updated logic of the Get to return null if permissions are not granted for
+    a given API.
+  * Updated the list of required permissions.
+* DEPENDENCIES
+  * Updated Microsoft.Graph dependencies to version 2.3.0
+  * Updated Microsoft.PowerApps.Administration.PowerShell to version 2.0.174.
+
+# 1.23.809.1
+
+* AADAuthorizationPolicy
+  * Added support for the AllowedToCreateTenants &
+    AllowedToReadBitlockerKeysForOwnedDevice properties.
+    FIXES [#3492](https://github.com/microsoft/Microsoft365DSC/issues/3492)
+* AADGroup, AADUser and O365Group
+  * Add support to use function endsWith as filter
+    FIXES [#3518](https://github.com/microsoft/Microsoft365DSC/issues/3518)
+* O365OrgSettings
+  * Added error handling for the Viva settings to handle task cancellation errors.
+  * Added improvements for the set to only call into APIs that need a PATCH request.
+* SCComplianceSearch
+  * Fixed an issue with the export when using CertificateThumbprint.
+    FIXES [#3499](https://github.com/microsoft/Microsoft365DSC/issues/3499)
+* SCComplianceSearchAction
+  * Adds support for the Preview action type.
+    FIXES [#3498](https://github.com/microsoft/Microsoft365DSC/issues/3498)
+* SCRetentionCompliancePolicy
+  * Fixes an issue where SPN auth parameters weren't returned from the Get-TargetResource
+    function.
+    FIXES [#3500](https://github.com/microsoft/Microsoft365DSC/issues/3500)
+* SPOTenantSettings
+  * Add support for new parameter HideSyncButtonOnTeamSite
+* TeamsGroupPolicyAssignment
+  * FIXES [#3559](https://github.com/microsoft/Microsoft365DSC/issues/3559)
+* TeamsShiftPolicy
+  * Deprecated the EnableShiftPresence parameter.
+* TeamsTemplatesPolicy
+  * Initial release.
+* MISC
+  * M365DscReverse: Fix exporting when $Filter var exists locally
+    FIXES [#3515](https://github.com/microsoft/Microsoft365DSC/issues/3515)
+  * Fix for the delta report function to handle deep nested CIM Instances.
+    FIXES [#3478](https://github.com/microsoft/Microsoft365DSC/issues/3478)
+* DEPENDENCIES
+  * Updated Microsoft.Graph.* dependencies to version 2.2.0.
+  * Updated MSCloudLoginAssistant to version 1.0.119.
+  * Updated dependency Microsoft.PowerApps.Administration.PowerShell to version 2.0.170.
+
+# 1.23.726.1
+
+* AADGroup
+  * Fix issue setting MemberOf property.
+    FIXES [#3496](https://github.com/microsoft/Microsoft365DSC/issues/3496)
+* TeamsOrgWideAppSettings
+  * Removed support for app authentication since the underlying cmdlets aren't
+    supporting it yet.
+* DEPENDENCIES
+  * Updated MSCloudLoginAssistant to version 1.0.118.
+* MISC
+  * Improved Update-M365DSCDependencies function to properly install all Microsoft.Graph.* modules.
+    FIXES [#3454](https://github.com/microsoft/Microsoft365DSC/issues/3454)
+
+# 1.23.719.1
+* AADCrossTenant
+  * Added Automatic Consent for inbound and Outbound trust settings
 * EXOSharedMailbox
   * Added capability to change the PrimarySMTPAddress of a Shared Mailbox
 * SPOExternalUserExpireInDays
@@ -110,7 +200,7 @@
     FIXES #3417
   * Update-M365DSCModule now forces a reload of the latest version of the Microsoft365DSC module.
     FIXES [#3326](https://github.com/microsoft/Microsoft365DSC/issues/3326)
-  * Update-M365DSCAyureADApplication
+  * Update-M365DSCAzureADApplication
     Added retry logic to catch the "Key credential end date is invalid" error when updating the application certificate.
     FIXES [#3426](https://github.com/microsoft/Microsoft365DSC/issues/3426)
 * DEPENDENCIES
